@@ -10,9 +10,15 @@ class TestRunner extends StatefulWidget {
   /// Must be a static method
   final VoidCallback main;
   final bool showIndicator;
+  final bool isolated;
   final Widget child;
 
-  const TestRunner({Key key, this.child, this.main, this.showIndicator = true})
+  const TestRunner(
+      {Key key,
+      this.child,
+      this.main,
+      this.showIndicator = true,
+      this.isolated = true})
       : super(key: key);
 
   @override
@@ -27,7 +33,7 @@ class _TestRunnerState extends State<TestRunner> {
   void initState() {
     super.initState();
 
-    service = TestService.create(widget.main, isolated: true);
+    service = TestService.create(widget.main, isolated: widget.isolated);
     service.addListener(() => setState(() {}));
   }
 
