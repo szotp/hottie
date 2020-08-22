@@ -114,38 +114,22 @@ class TestResultsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: DefaultTextStyle(
-        style: TextStyle(color: Colors.black),
-        child: Scaffold(
-          appBar: AppBar(
-            leading: CloseButton(
-              onPressed: onClose,
-            ),
+      home: Scaffold(
+        backgroundColor: Color(0xF0900000),
+        appBar: AppBar(
+          backgroundColor: Color(0xF0900000),
+          leading: CloseButton(
+            onPressed: onClose,
+            color: Color(0xFFFFFF66),
           ),
-          // appBar: PreferredSize(
-          //   child: Container(
-          //     color: Color(0xF0900000),
-          //     alignment: Alignment.bottomCenter,
-          //     padding: EdgeInsets.only(bottom: 8),
-          //     child: Text(
-          //       'TESTS FAILED',
-          //       style: TextStyle(
-          //         fontSize: 16,
-          //         fontWeight: FontWeight.bold,
-          //         color: Color(0xFFFFFF66),
-          //       ),
-          //     ),
-          //   ),
-          //   preferredSize: Size(50, 50),
-          // ),
-          body: DefaultTextStyle(
-            style: TextStyle(color: Colors.black),
-            child: ListView(
-              padding: EdgeInsets.all(8),
-              children: [
-                ...results.failed.map(_buildItem).expand((element) => element),
-              ],
-            ),
+        ),
+        body: DefaultTextStyle(
+          style: TextStyle(color: Color(0xFFFFFF66)),
+          child: ListView(
+            padding: EdgeInsets.all(8),
+            children: [
+              ...results.failed.map(_buildItem).expand((element) => element),
+            ],
           ),
         ),
       ),
