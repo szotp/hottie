@@ -14,7 +14,7 @@ void main() {
       Directionality(
         textDirection: TextDirection.ltr,
         child: ListView(
-          children: [
+          children: const [
             Text('0'),
             Text('0'),
             Text('1'),

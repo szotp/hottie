@@ -67,8 +67,15 @@ void testAll() {
 
 ## More examples
 Provider fork with hottie: https://github.com/szotp/provider/tree/hottie
-On my machine, all tests execute in below 1 second.
+On my machine, all 274 tests execute in around 1 second.
 
 ## Supported platforms
 * macOS
 * iOS simulator
+
+## Known issues
+1. Tests from packages can't be accessed from app project, unless they have been moved into lib directory (which is not great because code completion for flutter_test items does not work).
+2. Hottie doesn't fully support running on device because test resources will not be bundled with the app.
+
+## Future ideas:
+1. Instead of embedding hottie into the app, it may be possible to create console flutter app that would import the tests and run them.
