@@ -32,7 +32,6 @@ class NativeService {
 
       while (toIsolate == null) {
         toIsolate = IsolateNameServer.lookupPortByName(toIsolateName);
-        print('toIsolate is null');
         await Future.delayed(Duration(milliseconds: 10));
       }
     }
@@ -98,21 +97,3 @@ class RunnerEvent<I, O> {
 
   Future call() => worker(payload);
 }
-
-// class RunnerEvent {
-//   final int _handle;
-//   final Object _payload;
-
-//   Object call() {
-//     final handleObject = CallbackHandle.fromRawHandle(_handle);
-//     final main = PluginUtilities.getCallbackFromHandle(handleObject);
-//     return main(_payload);
-//   }
-
-//   static RunnerEvent create<I, O>(IsolatedWorker<I, O> worker, I payload) {
-//     return RunnerEvent(
-//         PluginUtilities.getCallbackHandle(worker).toRawHandle(), payload);
-//   }
-
-//   RunnerEvent(this._handle, this._payload);
-// }

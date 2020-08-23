@@ -21,37 +21,45 @@ dev_dependencies:
   hottie:
     git: https://github.com/szotp/hottie
 ```
-2. Move your test directory to the lib. This is necessary to be able to import your test files later.
 
-3. If you have multiple test files, create a new file in your test directory, and combine all other tests:
-```dart
-import 'test1.dart' as test1;
-import 'test2.dart' as test2;
-
-void main() {
-  test1.main();
-  test2.main();
-}
-```
-
-4. Create new main_hottie.dart file, import hottie, your primary main file and test file, and wrap your App widget with TestRunner widget:
+3. Create this main_hottie.dart file in your test directory, and configure your IDE to use it.
 ```dart
 import 'package:flutter/widgets.dart';
-
-import 'main.dart' as m;
 import 'package:hottie/hottie.dart';
-import 'test/test.dart' as t;
+import 'package:example/main.dart' as m; // rename example to your app name
 
 void main() {
   runApp(
-    TestRunner(main: t.main, child: m.MyApp()),
+    TestRunner(main: testAll, child: m.MyApp()),
   );
 }
 
+void testAll() {}
+```
+
+4. Import all your test files and run them in testAll method:
+```dart
+import 'package:flutter/widgets.dart';
+import 'package:hottie/hottie.dart';
+import 'package:example/main.dart' as m;
+
+import 'standard_test.dart' as t1;
+import 'widgets_test.dart' as t2;
+
+void main() {
+  runApp(
+    TestRunner(main: testAll, child: m.MyApp()),
+  );
+}
+
+void testAll() {
+  t1.main();
+  t2.main();
+}
 ```
 5. Run your app and enjoy rapid testing.
 
-6. To run tests from command line, simply point flutter to the correct file:
-```
-flutter test lib/test/test.dart
-```
+
+# More examples
+Provider fork with hottie: https://github.com/szotp/provider/tree/hottie
+On my machine, all tests execute in below 1 second.
