@@ -1,3 +1,4 @@
+import 'dart:developer' as d;
 import 'dart:isolate';
 import 'dart:ui';
 
@@ -42,7 +43,7 @@ abstract class TestService extends ValueNotifier<TestGroupResults> {
 
     _stopwatch.stop();
     final ms = _stopwatch.elapsed.inMicroseconds / 1000;
-    print('$message, took ${ms}ms');
+    d.log('$message, took ${ms}ms');
   }
 }
 

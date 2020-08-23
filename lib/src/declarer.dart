@@ -21,8 +21,9 @@ import 'service.dart';
 class MyReporter extends _Reporter {}
 
 Future<TestGroupResults> runTestsFromRawCallback(int input) {
-  return runTests(PluginUtilities.getCallbackFromHandle(
-      CallbackHandle.fromRawHandle(input)));
+  return runTests(
+      PluginUtilities.getCallbackFromHandle(CallbackHandle.fromRawHandle(input))
+          as TestMain);
 }
 
 class _HottieBinding extends AutomatedTestWidgetsFlutterBinding {
@@ -36,7 +37,7 @@ Future<TestGroupResults> runTests(TestMain input) async {
   }
 
   final binding = WidgetsBinding.instance as _HottieBinding;
-  binding.window.physicalSizeTestValue = Size(800, 600);
+  binding.window.physicalSizeTestValue = const Size(800, 600);
 
   final sw = Stopwatch()..start();
   final reporter = MyReporter();
@@ -108,7 +109,7 @@ Future<void> _runSkippedTest(Suite suiteConfig, Test test, List<Group> parents,
   final LocalTest skipped =
       LocalTest(test.name, test.metadata, () {}, trace: test.trace);
   if (skipped.metadata.skipReason != null) {
-    print('Skip: ${skipped.metadata.skipReason}');
+    //print('Skip: ${skipped.metadata.skipReason}');
   }
   final LiveTest liveTest = skipped.load(suiteConfig);
   reporter._onTestStarted(liveTest);

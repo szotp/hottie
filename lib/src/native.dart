@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:developer' as d;
 import 'dart:isolate';
 import 'dart:ui';
+
 import 'package:flutter/services.dart';
 
 const _channel = MethodChannel('com.szotp.Hottie');
@@ -23,7 +25,7 @@ class NativeService {
     fromIsolate.forEach(_onMessage);
 
     if (!alreadyRunning) {
-      final handle = PluginUtilities.getCallbackHandle(_runner);
+      final handle = PluginUtilities.getCallbackHandle(hottieInner);
 
       await _channel.invokeMethod(
         'initialize',
@@ -32,7 +34,7 @@ class NativeService {
 
       while (toIsolate == null) {
         toIsolate = IsolateNameServer.lookupPortByName(toIsolateName);
-        await Future.delayed(Duration(milliseconds: 10));
+        await Future.delayed(const Duration(milliseconds: 10));
       }
     }
   }
@@ -69,9 +71,7 @@ void _registerPort(SendPort port, String name) {
 }
 
 @pragma('vm:entry-point')
-Future<void> _runner() async {
-  print('_runner');
-
+Future<void> hottieInner() async {
   final toIsolate = ReceivePort();
   _registerPort(toIsolate.sendPort, NativeService.toIsolateName);
 
@@ -85,7 +85,7 @@ Future<void> _runner() async {
         fromIsolate.send(output);
       }
     } catch (e) {
-      print('_runner: got error while processing $event: $e');
+      d.log('_runner: got error while processing $event: $e');
     }
   });
 }
