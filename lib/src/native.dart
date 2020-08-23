@@ -1,9 +1,11 @@
 import 'dart:async';
-import 'dart:developer' as d;
+import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
 
 import 'package:flutter/services.dart';
+import 'package:hottie/src/logger.dart';
+import 'package:path/path.dart' as p;
 
 const _channel = MethodChannel('com.szotp.Hottie');
 
@@ -27,14 +29,27 @@ class NativeService {
     if (!alreadyRunning) {
       final handle = PluginUtilities.getCallbackHandle(hottieInner);
 
-      await _channel.invokeMethod(
+      final Map results = await _channel.invokeMethod(
         'initialize',
         {'handle': handle.toRawHandle()},
       );
 
+      final root = results["root"] as String;
+
       while (toIsolate == null) {
         toIsolate = IsolateNameServer.lookupPortByName(toIsolateName);
         await Future.delayed(const Duration(milliseconds: 10));
+      }
+
+      if (root != null) {
+        final msg = _SetCurrentDirectoryMessage(p.join(root, 'test'));
+
+        toIsolate.send(_SetCurrentDirectoryMessage(msg.root));
+        logHottie('current directory: $root');
+        assert(Directory(msg.root).existsSync(),
+            "Directory ${msg.root} doesn't exist");
+      } else {
+        logHottie('running without file access');
       }
     }
   }
@@ -44,8 +59,10 @@ class NativeService {
       await _initialize();
     }
 
-    final completer = _completer = Completer<O>();
-    toIsolate.send(RunnerEvent(method, payload));
+    final completer = Completer<O>();
+    _completer?.complete(null);
+    _completer = completer;
+    toIsolate.send(_ExecuteMessage(method, payload));
 
     return completer.future;
   }
@@ -77,23 +94,31 @@ Future<void> hottieInner() async {
 
   await toIsolate.forEach((event) async {
     try {
-      if (event is RunnerEvent) {
+      if (event is _ExecuteMessage) {
         final output = await event.call();
         final fromIsolate =
             IsolateNameServer.lookupPortByName(NativeService.fromIsolateName);
         assert(fromIsolate != null);
         fromIsolate.send(output);
+      } else if (event is _SetCurrentDirectoryMessage) {
+        Directory.current = event.root;
       }
     } catch (e) {
-      d.log('_runner: got error while processing $event: $e');
+      logHottie('_runner: got error while processing $event: $e');
     }
   });
 }
 
-class RunnerEvent<I, O> {
+class _ExecuteMessage<I, O> {
   final IsolatedWorker<I, O> worker;
   final I payload;
-  RunnerEvent(this.worker, this.payload);
+  _ExecuteMessage(this.worker, this.payload);
 
   Future call() => worker(payload);
+}
+
+class _SetCurrentDirectoryMessage {
+  final String root;
+
+  _SetCurrentDirectoryMessage(this.root);
 }

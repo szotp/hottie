@@ -1,28 +1,56 @@
 import Cocoa
 import FlutterMacOS
 
+#if DEBUG
 public class HottiePlugin: NSObject, FlutterPlugin {
-  public static func register(with registrar: FlutterPluginRegistrar) {
-    let channel = FlutterMethodChannel(name: "com.szotp.Hottie", binaryMessenger: registrar.messenger)
-    let instance = HottiePlugin()
-    registrar.addMethodCallDelegate(instance, channel: channel)
-  }
-
-   lazy var engine = FlutterEngine(name: "hottie", project: nil, allowHeadlessExecution: true)
-
-  public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-    let url = URL(fileURLWithPath: #file).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-    
-    switch call.method {
-    case "initialize":
-        let ok = engine.run(withEntrypoint: "hottie")
-        result([
-            "ok": ok,
-            "root": url.path,
-        ])
-    default:
-        assertionFailure()
-        result(nil)
+    public static func register(with registrar: FlutterPluginRegistrar) {
+        let channel = FlutterMethodChannel(name: "com.szotp.Hottie", binaryMessenger: registrar.messenger)
+        
+        registrar.addMethodCallDelegate(instance, channel: channel)
     }
-  }
+    
+    public static let instance = HottiePlugin()
+    
+    var root: URL?
+    
+    public func setRoot(path: StaticString = #file) {
+        #if DEBUG
+        var url = URL(fileURLWithPath: "\(path)")
+        let fm = FileManager.default
+        
+        while !fm.fileExists(atPath: url.appendingPathComponent("pubspec.yaml").path) {
+            url = url.deletingLastPathComponent()
+        }
+        
+        root = url
+        
+        print(root!)
+        #endif
+    }
+    
+    lazy var engine = FlutterEngine(name: "hottie", project: nil, allowHeadlessExecution: true)
+    
+    public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        switch call.method {
+        case "initialize":
+            let ok = engine.run(withEntrypoint: "hottie")
+            
+            var returns: [String: Any] = [:]
+            returns["ok"] = ok
+            if let root = root {
+                returns["root"] = root.path
+            }
+            
+            result(returns)
+        default:
+            assertionFailure()
+            result(nil)
+        }
+    }
 }
+#else
+public class HottiePlugin: NSObject, FlutterPlugin {
+    public static func register(with registrar: FlutterPluginRegistrar) {}
+    public func setRoot(path: StaticString = #file) {}
+}
+#endif

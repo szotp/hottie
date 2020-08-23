@@ -57,7 +57,10 @@ class _SeparateEngineService extends TestService {
     super.retest();
     final result = await _native.execute(runTestsFromRawCallback,
         PluginUtilities.getCallbackHandle(main).toRawHandle());
-    update(result);
+
+    if (result != null) {
+      update(result);
+    }
   }
 }
 
