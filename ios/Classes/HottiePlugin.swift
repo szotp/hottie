@@ -1,10 +1,10 @@
 import Flutter
 import UIKit
 
-public class SwiftHottiePlugin: NSObject, FlutterPlugin {
+public class HottiePlugin: NSObject, FlutterPlugin {
   public static func register(with registrar: FlutterPluginRegistrar) {
     let channel = FlutterMethodChannel(name: "com.szotp.Hottie", binaryMessenger: registrar.messenger())
-    let instance = SwiftHottiePlugin()
+    let instance = HottiePlugin()
     registrar.addMethodCallDelegate(instance, channel: channel)
   }
     
