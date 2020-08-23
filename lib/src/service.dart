@@ -1,6 +1,8 @@
 import 'dart:isolate';
+import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
+import 'package:hottie/src/native.dart';
 
 import 'declarer.dart';
 import 'model.dart';
@@ -22,7 +24,8 @@ abstract class TestService extends ValueNotifier<TestGroupResults> {
 
   factory TestService.create(TestMain main, {bool isolated = false}) {
     if (isolated) {
-      return _IsolatingTestService(main);
+      return _SeparateEngineService(main);
+      //return _IsolatingTestService(main);
     } else {
       return _RegularTestService(main);
     }
@@ -43,10 +46,22 @@ abstract class TestService extends ValueNotifier<TestGroupResults> {
   }
 }
 
-class _RegularTestService extends TestService {
-  _RegularTestService(TestMain main) : super(main) {
-    retest();
+class _SeparateEngineService extends TestService {
+  final _native = NativeService.instance;
+
+  _SeparateEngineService(void Function() main) : super(main);
+
+  @override
+  Future<void> retest() async {
+    super.retest();
+    final result = await _native.execute(runTestsFromRawCallback,
+        PluginUtilities.getCallbackHandle(main).toRawHandle());
+    update(result);
   }
+}
+
+class _RegularTestService extends TestService {
+  _RegularTestService(TestMain main) : super(main);
 
   @override
   void retest() {
@@ -55,49 +70,49 @@ class _RegularTestService extends TestService {
   }
 }
 
-class _IsolatingTestService extends TestService {
-  Isolate _isolate;
+// class _IsolatingTestService extends TestService {
+//   Isolate _isolate;
 
-  ReceivePort _fromIsolate = ReceivePort();
-  SendPort _toIsolate;
+//   ReceivePort _fromIsolate = ReceivePort();
+//   SendPort _toIsolate;
 
-  static void _run(TestInput input) {
-    final reloads = ReceivePort();
+//   static void _run(TestInput input) {
+//     final reloads = ReceivePort();
 
-    input.fromIsolate.send(reloads.sendPort);
+//     input.fromIsolate.send(reloads.sendPort);
 
-    reloads.listen((message) async {
-      final result = await runTests(input.main);
-      input.fromIsolate.send(result);
-    });
-  }
+//     reloads.listen((message) async {
+//       final result = await runTests(input.main);
+//       input.fromIsolate.send(result);
+//     });
+//   }
 
-  _IsolatingTestService(TestMain main) : super(main) {
-    setup();
-  }
+//   _IsolatingTestService(TestMain main) : super(main) {
+//     setup();
+//   }
 
-  void dispose() {
-    super.dispose();
-    _isolate.kill();
-  }
+//   void dispose() {
+//     super.dispose();
+//     _isolate.kill();
+//   }
 
-  void retest() {
-    super.retest();
-    _toIsolate?.send(null);
-  }
+//   void retest() {
+//     super.retest();
+//     _toIsolate?.send(null);
+//   }
 
-  void _handleMessage(message) {
-    if (message is SendPort) {
-      _toIsolate = message;
-      retest();
-    } else if (message is TestGroupResults) {
-      update(message);
-    }
-  }
+//   void _handleMessage(message) {
+//     if (message is SendPort) {
+//       _toIsolate = message;
+//       retest();
+//     } else if (message is TestGroupResults) {
+//       update(message);
+//     }
+//   }
 
-  Future<void> setup() async {
-    final input = TestInput(main, _fromIsolate.sendPort);
-    _fromIsolate.listen(_handleMessage);
-    _isolate = await Isolate.spawn(_run, input, debugName: 'hottie');
-  }
-}
+//   Future<void> setup() async {
+//     final input = TestInput(main, _fromIsolate.sendPort);
+//     _fromIsolate.listen(_handleMessage);
+//     _isolate = await Isolate.spawn(_run, input, debugName: 'hottie');
+//   }
+// }

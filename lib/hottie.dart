@@ -35,6 +35,7 @@ class _TestRunnerState extends State<TestRunner> {
 
     service = TestService.create(widget.main, isolated: widget.isolated);
     service.addListener(() => setState(() {}));
+    service.retest();
   }
 
   @override

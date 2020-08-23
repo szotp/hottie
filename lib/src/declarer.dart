@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:test_api/src/backend/declarer.dart'; // ignore: implementation_imports
 import 'package:test_api/src/backend/group.dart'; // ignore: implementation_imports
@@ -16,6 +17,11 @@ import 'service.dart';
 // taken from test_compat.dart
 
 class MyReporter extends _Reporter {}
+
+Future<TestGroupResults> runTestsFromRawCallback(int input) {
+  return runTests(PluginUtilities.getCallbackFromHandle(
+      CallbackHandle.fromRawHandle(input)));
+}
 
 Future<TestGroupResults> runTests(TestMain input) async {
   final sw = Stopwatch()..start();
