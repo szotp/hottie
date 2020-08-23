@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 
+import 'package:flutter/widgets.dart';
 import 'package:test_api/src/backend/declarer.dart'; // ignore: implementation_imports
 import 'package:test_api/src/backend/group.dart'; // ignore: implementation_imports
 import 'package:test_api/src/backend/group_entry.dart'; // ignore: implementation_imports
@@ -11,6 +12,7 @@ import 'package:test_api/src/backend/suite_platform.dart'; // ignore: implementa
 import 'package:test_api/src/backend/runtime.dart'; // ignore: implementation_imports
 import 'package:test_api/src/backend/invoker.dart'; // ignore: implementation_imports
 
+import 'package:flutter_test/flutter_test.dart';
 import 'model.dart';
 import 'service.dart';
 
@@ -23,7 +25,19 @@ Future<TestGroupResults> runTestsFromRawCallback(int input) {
       CallbackHandle.fromRawHandle(input)));
 }
 
+class _HottieBinding extends AutomatedTestWidgetsFlutterBinding {
+  @override
+  void scheduleWarmUpFrame() {}
+}
+
 Future<TestGroupResults> runTests(TestMain input) async {
+  if (WidgetsBinding.instance == null) {
+    _HottieBinding();
+  }
+
+  final binding = WidgetsBinding.instance as _HottieBinding;
+  binding.window.physicalSizeTestValue = Size(800, 600);
+
   final sw = Stopwatch()..start();
   final reporter = MyReporter();
 
