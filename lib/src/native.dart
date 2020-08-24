@@ -7,6 +7,8 @@ import 'package:flutter/services.dart';
 import 'package:hottie/src/logger.dart';
 import 'package:path/path.dart' as p;
 
+import 'declarer.dart';
+
 const _channel = MethodChannel('com.szotp.Hottie');
 
 typedef IsolatedWorker<Input, Output> = Future<Output> Function(Input);
@@ -42,10 +44,9 @@ class NativeService {
       }
 
       if (root != null) {
-        final msg = _SetCurrentDirectoryMessage(p.join(root, 'test'));
+        final msg = _SetCurrentDirectoryMessage(root);
+        toIsolate.send(msg);
 
-        toIsolate.send(_SetCurrentDirectoryMessage(msg.root));
-        logHottie('current directory: $root');
         assert(Directory(msg.root).existsSync(),
             "Directory ${msg.root} doesn't exist");
       } else {
@@ -101,7 +102,7 @@ Future<void> hottieInner() async {
         assert(fromIsolate != null);
         fromIsolate.send(output);
       } else if (event is _SetCurrentDirectoryMessage) {
-        Directory.current = event.root;
+        setTestDirectory(event.root);
       }
     } catch (e) {
       logHottie('_runner: got error while processing $event: $e');

@@ -72,6 +72,7 @@ On my machine, all 274 tests execute in around 1 second.
 ## Supported platforms
 * macOS
 * iOS simulator
+* Android (without file access)
 
 ## Known issues
 1. Tests from packages can't be accessed from app project, unless they have been moved into lib directory (which is not great because code completion for flutter_test items does not work).
@@ -79,3 +80,11 @@ On my machine, all 274 tests execute in around 1 second.
 
 ## Future ideas:
 1. Instead of embedding hottie into the app, it may be possible to create console flutter app that would import the tests and run them.
+
+
+## File access
+File access on Android is currently not possible. Ideas how to implement this are welcome.
+
+To setup file access for your test, in iOS and macOS, call `HottiePlugin.instance.setRoot()` where plugin registration happens (check the example project for more details).  Additionally, for macOS, you will also need to disable sandboxing, or add an exception for the test directory.
+
+To omit tests that use filesystem, add "File" tag to them, or simply do not call them in your testAllMethod.

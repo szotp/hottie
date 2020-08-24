@@ -22,7 +22,7 @@ public class HottiePlugin: NSObject, FlutterPlugin {
             url = url.deletingLastPathComponent()
         }
         
-        root = url
+        root = url.appendingPathComponent("test")
         
         print(root!)
         #endif

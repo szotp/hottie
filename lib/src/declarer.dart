@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/widgets.dart';
@@ -13,10 +14,18 @@ import 'package:test_api/src/backend/runtime.dart'; // ignore: implementation_im
 import 'package:test_api/src/backend/invoker.dart'; // ignore: implementation_imports
 
 import 'package:flutter_test/flutter_test.dart';
+import 'logger.dart';
 import 'model.dart';
 import 'service.dart';
 
 // taken from test_compat.dart
+
+var _hasTestDirectory = false;
+void setTestDirectory(String root) {
+  logHottie('current directory: $root');
+  Directory.current = root;
+  _hasTestDirectory = true;
+}
 
 class MyReporter extends _Reporter {}
 
@@ -119,6 +128,10 @@ Future<void> _runSkippedTest(Suite suiteConfig, Test test, List<Group> parents,
 Future<void> _runLiveTest(
     Suite suiteConfig, LiveTest liveTest, _Reporter reporter,
     {bool countSuccess = true}) async {
+  if (!_hasTestDirectory && liveTest.test.metadata.tags.contains('File')) {
+    reporter.skipped.add(liveTest.test);
+    return;
+  }
   reporter._onTestStarted(liveTest);
   // Schedule a microtask to ensure that [onTestStarted] fires before the
   // first [LiveTest.onStateChange] event.
