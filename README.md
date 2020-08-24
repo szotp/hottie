@@ -6,7 +6,7 @@ Experiment to run tests inside a running app, for faster feedback loop.
 
 Usually, flutter tests are executed by "flutter test" command or IDE equivalent. Unfortunately, this method is pretty slow (around 5s of startup before anything executes) and does not support hot reload. Additionaly, you have to manually rerun those tests on each change, which takes your focus from actual code.
 
-Instead of using flutter test to run tests, hottie allows you to embed them (with some hacks) directly into the running app. This way, you get hot reload and instant feedback. Combined with hot reload on save from your IDE, this gives you a very smooth TDD experience. Hottie does not affect production apps - you access it with separate main file which ensures that no test code will be actually embedded in your release builds.
+Instead of using flutter test to run tests, hottie allows you to embed them (with some hacks) directly into the running app. This way, you get hot reload support and instant feedback. Combined with automatic hot reload from your IDE, this gives you a very smooth TDD experience. Hottie does not affect production apps - you access it with separate main file which ensures that no test code will be actually embedded in your release builds.
 
 ## UI
 
