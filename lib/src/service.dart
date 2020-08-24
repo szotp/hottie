@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:hottie/src/native.dart';
 
 import 'declarer.dart';
+import 'logger.dart';
 import 'model.dart';
 
 typedef TestMain = void Function();
@@ -43,7 +44,7 @@ abstract class TestService extends ValueNotifier<TestGroupResults> {
 
     _stopwatch.stop();
     final ms = _stopwatch.elapsed.inMicroseconds / 1000;
-    d.log('$message, took ${ms}ms');
+    logHottie('$message, took ${ms}ms');
   }
 }
 

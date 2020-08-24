@@ -1,5 +1,6 @@
 import Cocoa
 import FlutterMacOS
+import hottie
 
 class MainFlutterWindow: NSWindow {
   override func awakeFromNib() {
@@ -9,6 +10,8 @@ class MainFlutterWindow: NSWindow {
     self.setFrame(windowFrame, display: true)
 
     RegisterGeneratedPlugins(registry: flutterViewController)
+
+    HottiePlugin.instance.setRoot();
 
     super.awakeFromNib()
   }
