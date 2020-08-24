@@ -25,7 +25,7 @@ Instead of using flutter test to run tests, hottie allows you to embed them (wit
 				
 ## Running the example
 
-1. Run example/lib/main_hottie.dart.
+1. Run example/test/main_hottie.dart (VSCode config is already added, AS users are on their own).
 2. Notice green indicator in the bottom left corner.
 3. Break some tests or tested methods. Save and hot reload.
 4. See error page appearing with failed test.
