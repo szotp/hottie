@@ -1,8 +1,29 @@
 # hottie
 
-Experiment to run tests inside a running app, for faster feedback loop.
+Experiment to run tests inside a running app, for faster feedback loop. 
 
-## Running example
+## Why?
+
+Usually, flutter tests are executed by "flutter test" command or IDE equivalent. Unfortunately, this method is pretty slow (around 5s of startup before anything executes) and does not support hot reload. Additionaly, you have to manually rerun those tests on each change, which takes your focus from actual code.
+
+Instead of using flutter test to run tests, hottie allows you to embed them (with some hacks) directly into the running app. This way, you get hot reload and instant feedback. Combined with hot reload on save from your IDE, this gives you a very smooth TDD experience. Hottie does not affect production apps - you access it with separate main file which ensures that no test code will be actually embedded in your release builds.
+
+## UI
+
+<table>
+ 	<tr>
+  	<td>If all is good, hottie will display a green circle in bottom left corner.</td>
+   	<td>As soon as your code gets broken, you will see a red screen with details.</td>
+		<td>You can always close it. Red circle will indicate how many tests failed.</td>
+ 	</tr>
+ 	<tr>
+  	<td><img src="images/ok.png" /></td>
+   	<td><img src="images/fail.png" /></td>
+		<td><img src="images/fail_closed.png" /></td>
+ 	</tr>
+</table>
+				
+## Running the example
 
 1. Run example/lib/main_hottie.dart.
 2. Notice green indicator in the bottom left corner.
@@ -64,7 +85,6 @@ void testAll() {
 ```
 5. Run your app and enjoy rapid testing.
 
-
 ## More examples
 Provider fork with hottie: https://github.com/szotp/provider/tree/hottie
 On my machine, all 274 tests execute in around 1 second.
@@ -80,7 +100,10 @@ On my machine, all 274 tests execute in around 1 second.
 
 ## Future ideas:
 1. Instead of embedding hottie into the app, it may be possible to create console flutter app that would import the tests and run them.
-
+2. Better formatting for errors.
+3. Add ability to disable tests from UI.
+4. Benchmark tests and disable the heavy ones automatically.
+5. Customizable delay from hot reload to test execution.
 
 ## File access
 File access on Android is currently not possible. Ideas how to implement this are welcome.

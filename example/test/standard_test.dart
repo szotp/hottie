@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('test add 1', () async {
-    expect(add(1, 2), 3);
+    expect(add(1, 2), 4);
   });
 
   test(
@@ -13,7 +13,7 @@ void main() {
     () async {
       final file = File('file.txt');
       final contents = file.readAsStringSync();
-      expect(contents, 'test');
+      expect(contents, 'testt');
     },
     tags: ["File"],
   );

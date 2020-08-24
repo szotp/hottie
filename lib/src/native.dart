@@ -5,7 +5,6 @@ import 'dart:ui';
 
 import 'package:flutter/services.dart';
 import 'package:hottie/src/logger.dart';
-import 'package:path/path.dart' as p;
 
 import 'declarer.dart';
 
