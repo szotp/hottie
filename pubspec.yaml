@@ -1,6 +1,6 @@
 name: hottie
 description: Experiment to run tests inside a running app, for faster feedback loop.
-version: 0.0.1-dev.1
+version: 0.0.1-dev.2
 
 homepage: https://github.com/szotp/hottie/
 
@@ -11,8 +11,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  test_api: ^0.2.19-nullsafety
-  flutter_test:
+  test_api: ^0.2.0
+  flutter_test: 
     sdk: flutter
 
 dev_dependencies:
