@@ -89,8 +89,14 @@ void _registerPort(SendPort port, String name) {
 
 @pragma('vm:entry-point')
 Future<void> hottieInner() async {
+  window.setIsolateDebugName('hottie');
   final toIsolate = ReceivePort();
   _registerPort(toIsolate.sendPort, NativeService.toIsolateName);
+
+  // for unclear reasons, this delay is needed to prevent errors from pausing the isolate
+  if (Platform.isMacOS) {
+    await Future.delayed(const Duration(milliseconds: 500));
+  }
 
   await toIsolate.forEach((event) async {
     try {
