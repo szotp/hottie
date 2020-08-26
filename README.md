@@ -43,7 +43,7 @@ dev_dependencies:
     git: https://github.com/szotp/hottie
 ```
 
-3. Create this main_hottie.dart file in your test directory, and configure your IDE to use it.
+3. Create this main_hottie.dart file in your test directory, and [configure your IDE to use it](https://stackoverflow.com/questions/55510244/flutter-how-do-i-change-main-dartentry-point-to-some-other-page-in-flutter).
 ```dart
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
