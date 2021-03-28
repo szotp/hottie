@@ -16,7 +16,7 @@ dependencies:
   test_api: ">=0.2.0 <0.5.0"
 
 dev_dependencies:
-  lint: 
+  lint:
 
 flutter:
   plugin:

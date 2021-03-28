@@ -148,13 +148,19 @@ class TestIndicator extends StatelessWidget {
   Widget buildStatusCircle({bool ok}) {
     final color = ok ? Colors.green : Colors.red;
 
-    return Container(
-      width: 18,
-      height: 18,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: color.withOpacity(0.8),
-      ),
+    return Row(
+      children: [
+        Container(
+          width: 18,
+          height: 18,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: color.withOpacity(0.8),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text('${results.passed.length} / ${results.totalCount}'),
+      ],
     );
   }
 
