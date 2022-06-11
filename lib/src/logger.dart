@@ -1,5 +1,7 @@
-import 'dart:developer' as d;
+import 'package:logging/logging.dart';
 
-void logHottie(String message) {
-  d.log(message, name: 'hottie');
+final _logger = Logger('hottie');
+
+void logHottie(String message, [Level level = Level.INFO]) {
+  _logger.log(level, message);
 }

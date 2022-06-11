@@ -41,7 +41,12 @@ class _HottieBinding extends AutomatedTestWidgetsFlutterBinding {
 }
 
 Future<TestGroupResults> runTests(TestMain input) async {
-  if (WidgetsBinding.instance == null) {
+  try {
+    if (WidgetsBinding.instance == null) {
+      _HottieBinding();
+    }
+  } catch (e) {
+    // In debug mode accessing WidgetsBinding.instance when it's null will throw
     _HottieBinding();
   }
 
