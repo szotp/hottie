@@ -1,12 +1,10 @@
 import 'dart:isolate';
-import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
+import 'package:hottie/src/declarer.dart';
+import 'package:hottie/src/logger.dart';
+import 'package:hottie/src/model.g.dart';
 import 'package:hottie/src/native.dart';
-
-import 'declarer.dart';
-import 'logger.dart';
-import 'model.dart';
 
 typedef TestMain = void Function();
 
@@ -21,7 +19,8 @@ abstract class TestService extends ValueNotifier<TestGroupResults> {
   final void Function() main;
   final _stopwatch = Stopwatch();
 
-  TestService(this.main) : super(const TestGroupResults());
+  TestService(this.main)
+      : super(TestGroupResults(failed: [], skipped: 0, passed: []));
 
   factory TestService.create(TestMain main, {bool isolated = false}) {
     if (isolated) {
@@ -50,22 +49,19 @@ abstract class TestService extends ValueNotifier<TestGroupResults> {
 class _SeparateEngineService extends TestService {
   final _native = NativeService.instance;
 
-  _SeparateEngineService(void Function() main) : super(main);
+  _SeparateEngineService(super.main);
 
   @override
   Future<void> retest() async {
     super.retest();
-    final result = await _native.execute(runTestsFromRawCallback,
-        PluginUtilities.getCallbackHandle(main).toRawHandle());
+    final result = await _native.execute(main);
 
-    if (result != null) {
-      update(result);
-    }
+    update(result);
   }
 }
 
 class _RegularTestService extends TestService {
-  _RegularTestService(TestMain main) : super(main);
+  _RegularTestService(super.main);
 
   @override
   void retest() {

@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   testWidgets('empty widgets', (x) async {});
 
-  test('test add 2', () async {
+  test('test add 2', () {
     expect(add(1, 1), 2);
   });
 

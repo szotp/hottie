@@ -2,21 +2,19 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
 
-import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:hottie/src/logger.dart';
+import 'package:hottie/src/model.g.dart';
+import 'package:hottie/src/service.dart';
 import 'package:test_api/src/backend/declarer.dart'; // ignore: implementation_imports
 import 'package:test_api/src/backend/group.dart'; // ignore: implementation_imports
 import 'package:test_api/src/backend/group_entry.dart'; // ignore: implementation_imports
-import 'package:test_api/src/backend/test.dart'; // ignore: implementation_imports
-import 'package:test_api/src/backend/suite.dart'; // ignore: implementation_imports
-import 'package:test_api/src/backend/live_test.dart'; // ignore: implementation_imports
-import 'package:test_api/src/backend/suite_platform.dart'; // ignore: implementation_imports
-import 'package:test_api/src/backend/runtime.dart'; // ignore: implementation_imports
 import 'package:test_api/src/backend/invoker.dart'; // ignore: implementation_imports
-
-import 'package:flutter_test/flutter_test.dart';
-import 'logger.dart';
-import 'model.dart';
-import 'service.dart';
+import 'package:test_api/src/backend/live_test.dart'; // ignore: implementation_imports
+import 'package:test_api/src/backend/runtime.dart'; // ignore: implementation_imports
+import 'package:test_api/src/backend/suite.dart'; // ignore: implementation_imports
+import 'package:test_api/src/backend/suite_platform.dart'; // ignore: implementation_imports
+import 'package:test_api/src/backend/test.dart'; // ignore: implementation_imports
 
 // taken from test_compat.dart
 
@@ -30,23 +28,20 @@ void setTestDirectory(String root) {
 class MyReporter extends _Reporter {}
 
 Future<TestGroupResults> runTestsFromRawCallback(int input) {
-  return runTests(
-      PluginUtilities.getCallbackFromHandle(CallbackHandle.fromRawHandle(input))
-          as TestMain);
+  return runTests(PluginUtilities.getCallbackFromHandle(
+      CallbackHandle.fromRawHandle(input))! as TestMain);
 }
 
 class _HottieBinding extends AutomatedTestWidgetsFlutterBinding {
+  static final instance = _HottieBinding();
+
   @override
   void scheduleWarmUpFrame() {}
 }
 
 Future<TestGroupResults> runTests(TestMain input) async {
-  if (WidgetsBinding.instance == null) {
-    _HottieBinding();
-  }
-
-  final binding = WidgetsBinding.instance as _HottieBinding;
-  binding.window.physicalSizeTestValue = const Size(800, 600);
+  final binding = _HottieBinding.instance;
+  binding.platformDispatcher.implicitView?.physicalSize = const Size(800, 600);
 
   final sw = Stopwatch()..start();
   final reporter = MyReporter();
@@ -69,11 +64,12 @@ Future<TestGroupResults> runTests(TestMain input) async {
 }
 
 TestResultError _mapError(AsyncError error) {
-  return TestResultError(error.toString());
+  return TestResultError(message: error.toString());
 }
 
 TestResult _mapResult(LiveTest test) {
-  return TestResult(test.test.name, test.errors.map(_mapError).toList());
+  return TestResult(
+      name: test.test.name, errors: test.errors.map(_mapError).toList());
 }
 
 Future<void> _runGroup(Suite suiteConfig, Group group, List<Group> parents,
@@ -84,7 +80,7 @@ Future<void> _runGroup(Suite suiteConfig, Group group, List<Group> parents,
     bool setUpAllSucceeded = true;
     if (!skipGroup && group.setUpAll != null) {
       final LiveTest liveTest =
-          group.setUpAll.load(suiteConfig, groups: parents);
+          group.setUpAll!.load(suiteConfig, groups: parents);
       await _runLiveTest(suiteConfig, liveTest, reporter, countSuccess: false);
       setUpAllSucceeded = liveTest.state.result.isPassing;
     }
@@ -105,7 +101,7 @@ Future<void> _runGroup(Suite suiteConfig, Group group, List<Group> parents,
     // teardowns to ensure that any state is properly cleaned up.
     if (!skipGroup && group.tearDownAll != null) {
       final LiveTest liveTest =
-          group.tearDownAll.load(suiteConfig, groups: parents);
+          group.tearDownAll!.load(suiteConfig, groups: parents);
       await _runLiveTest(suiteConfig, liveTest, reporter, countSuccess: false);
     }
   } finally {

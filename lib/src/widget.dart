@@ -1,8 +1,8 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'model.dart';
-import 'service.dart';
+import 'package:hottie/src/model.g.dart';
+import 'package:hottie/src/service.dart';
 
 class TestRunner extends StatefulWidget {
   /// Must be a static method
@@ -11,18 +11,18 @@ class TestRunner extends StatefulWidget {
   final Widget child;
 
   const TestRunner({
-    Key key,
-    @required this.child,
-    @required this.main,
+    super.key,
+    required this.child,
+    required this.main,
     this.showIndicator = true,
-  }) : super(key: key);
+  });
 
   @override
   _TestRunnerState createState() => _TestRunnerState();
 }
 
 class _TestRunnerState extends State<TestRunner> {
-  TestService service;
+  late TestService service;
   bool showsOverlay = true;
 
   @override
@@ -57,7 +57,7 @@ class _TestRunnerState extends State<TestRunner> {
       children: [
         widget.child,
         MediaQuery(
-          data: MediaQueryData.fromWindow(WidgetsBinding.instance.window),
+          data: MediaQueryData.fromView(View.of(context)),
           child: Directionality(
             textDirection: TextDirection.ltr,
             child: Stack(
@@ -94,8 +94,8 @@ class TestResultsView extends StatelessWidget {
   final TestGroupResults results;
   final VoidCallback onClose;
 
-  const TestResultsView({Key key, this.results, this.onClose})
-      : super(key: key);
+  const TestResultsView(
+      {super.key, required this.results, required this.onClose});
 
   Widget _buildError(TestResultError error) {
     return Padding(
@@ -143,9 +143,9 @@ class TestResultsView extends StatelessWidget {
 class TestIndicator extends StatelessWidget {
   final TestGroupResults results;
 
-  const TestIndicator({Key key, this.results}) : super(key: key);
+  const TestIndicator({super.key, required this.results});
 
-  Widget buildStatusCircle({bool ok}) {
+  Widget buildStatusCircle({required bool ok}) {
     final color = ok ? Colors.green : Colors.red;
 
     return Container(
@@ -153,13 +153,13 @@ class TestIndicator extends StatelessWidget {
       height: 18,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: color.withOpacity(0.8),
+        color: color.withValues(alpha: 0.8),
       ),
     );
   }
 
   Widget buildContent(BuildContext context, TestGroupResults value) {
-    if (value.noFailures) {
+    if (value.ok) {
       return buildStatusCircle(ok: true);
     }
 
@@ -181,7 +181,7 @@ class TestIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final data = MediaQueryData.fromWindow(WidgetsBinding.instance.window);
+    final data = MediaQueryData.fromView(View.of(context));
 
     return Align(
       alignment: Alignment.bottomLeft,
@@ -191,14 +191,14 @@ class TestIndicator extends StatelessWidget {
         padding: const EdgeInsets.only(left: 4, right: 4),
         child: Builder(
           builder: (context) {
-            if (results != null) {
-              return buildContent(context, results);
-            } else {
-              return const SizedBox();
-            }
+            return buildContent(context, results);
           },
         ),
       ),
     );
   }
+}
+
+extension on TestGroupResults {
+  bool get ok => failed.isEmpty;
 }
