@@ -13,6 +13,9 @@ Future<void> main() async {
 }
 
 @pragma('vm:entry-point')
+void hottie() => hottieInner();
+
+@pragma('vm:entry-point')
 void testAll() {
   t1.main();
   t2.main();

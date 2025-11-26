@@ -77,3 +77,4 @@ build/
 # FVM Version Cache
 .fvm/
 ephemeral
+DerivedData

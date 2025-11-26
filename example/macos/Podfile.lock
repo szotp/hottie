@@ -4,19 +4,19 @@ PODS:
     - FlutterMacOS
 
 DEPENDENCIES:
-  - FlutterMacOS (from `Flutter/ephemeral/.symlinks/flutter/darwin-x64`)
+  - FlutterMacOS (from `Flutter/ephemeral`)
   - hottie (from `Flutter/ephemeral/.symlinks/plugins/hottie/macos`)
 
 EXTERNAL SOURCES:
   FlutterMacOS:
-    :path: Flutter/ephemeral/.symlinks/flutter/darwin-x64
+    :path: Flutter/ephemeral
   hottie:
     :path: Flutter/ephemeral/.symlinks/plugins/hottie/macos
 
 SPEC CHECKSUMS:
-  FlutterMacOS: 15bea8a44d2fa024068daa0140371c020b4b6ff9
-  hottie: 82c851aa3131fcfc7b8e97bf44704970e062a145
+  FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
+  hottie: 3eba6beb173ecf2e0d05e49c8045516c1ac729e4
 
-PODFILE CHECKSUM: d8ba9b3e9e93c62c74a660b46c6fcb09f03991a7
+PODFILE CHECKSUM: 54d867c82ac51cbd61b565781b9fada492027009
 
-COCOAPODS: 1.9.1
+COCOAPODS: 1.16.2

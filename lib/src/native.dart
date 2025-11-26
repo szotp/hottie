@@ -29,7 +29,7 @@ class NativeService {
     fromIsolate.forEach(_onMessage);
 
     if (!alreadyRunning) {
-      final handle = PluginUtilities.getCallbackHandle(hottie)!;
+      final handle = PluginUtilities.getCallbackHandle(hottieInner)!;
 
       final Map results = await _channel.invokeMethod(
         'initialize',
@@ -94,7 +94,7 @@ void _registerPort(SendPort port, String name) {
 }
 
 @pragma('vm:entry-point')
-Future<void> hottie() async {
+Future<void> hottieInner() async {
   PlatformDispatcher.instance.setIsolateDebugName('hottie');
   final toIsolate = ReceivePort();
   _registerPort(toIsolate.sendPort, NativeService.toIsolateName);

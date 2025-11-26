@@ -1,6 +1,6 @@
 name: hottie
 description: Experiment to run tests inside a running app, for faster feedback loop.
-version: 0.0.1-dev.2
+version: 0.0.2-dev.2
 
 homepage: https://github.com/szotp/hottie/
 

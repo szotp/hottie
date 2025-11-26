@@ -33,9 +33,7 @@ public class HottiePlugin: NSObject, FlutterPlugin {
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
         switch call.method {
         case "initialize":
-            let handle = (call.arguments as! [String: Any])["handle"] as! Int64
-            let entryPoint = FlutterCallbackCache.lookupCallbackInformation(handle)
-            let ok = engine.run(withEntrypoint: entryPoint?.callbackName, libraryURI: entryPoint?.callbackLibraryPath)
+            let ok = engine.run(withEntrypoint: "hottie")
             
             var returns: [String: Any] = [:]
             returns["ok"] = ok
