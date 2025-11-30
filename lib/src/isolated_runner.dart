@@ -7,15 +7,11 @@ import 'package:flutter/services.dart';
 import 'package:hottie/src/declarer.dart';
 import 'package:hottie/src/logger.dart';
 import 'package:hottie/src/model.g.dart';
-import 'package:hottie/src/service.dart';
 
 const _codec = IsolateStarted.pigeonChannelCodec;
 const _channel = MethodChannel('com.szotp.Hottie');
 
-class NativeService {
-  // ignore: unreachable_from_main
-  static final instance = NativeService();
-
+class IsolatedRunnerService {
   static const fromIsolateName = 'com.szotp.Hottie.fromIsolate';
   static const toIsolateName = 'com.szotp.Hottie.toIsolate';
   ReceivePort fromIsolate = ReceivePort();
@@ -97,7 +93,7 @@ void _registerPort(SendPort port, String name) {
 Future<void> hottieInner() async {
   PlatformDispatcher.instance.setIsolateDebugName('hottie');
   final toIsolate = ReceivePort();
-  _registerPort(toIsolate.sendPort, NativeService.toIsolateName);
+  _registerPort(toIsolate.sendPort, IsolatedRunnerService.toIsolateName);
 
   // for unclear reasons, this delay is needed to prevent errors from pausing the isolate
   if (Platform.isMacOS) {
@@ -111,7 +107,7 @@ Future<void> hottieInner() async {
       switch (message) {
         case RunTestsIsolateMessage():
           final output = await runTests(message.call);
-          final fromIsolate = IsolateNameServer.lookupPortByName(NativeService.fromIsolateName);
+          final fromIsolate = IsolateNameServer.lookupPortByName(IsolatedRunnerService.fromIsolateName);
           assert(fromIsolate != null);
           fromIsolate!.send(_codec.encodeMessage(output));
         case SetCurrentDirectoryIsolateMessage():

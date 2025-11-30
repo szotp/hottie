@@ -1,8 +1,8 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:hottie/src/isolated_runner.dart';
 import 'package:hottie/src/model.g.dart';
-import 'package:hottie/src/service.dart';
 
 class TestRunner extends StatefulWidget {
   /// Must be a static method
@@ -22,28 +22,31 @@ class TestRunner extends StatefulWidget {
 }
 
 class _TestRunnerState extends State<TestRunner> {
-  late TestService service;
+  final service = IsolatedRunnerService();
   bool showsOverlay = true;
+
+  TestGroupResults results = TestGroupResults(skipped: 0, failed: [], passed: []);
 
   @override
   void initState() {
     super.initState();
-
-    service = TestService.create(widget.main, isolated: true);
-    service.addListener(() => setState(() {}));
-    service.retest();
-  }
-
-  @override
-  void dispose() {
-    service.dispose();
-    super.dispose();
   }
 
   @override
   void reassemble() {
     super.reassemble();
-    service.retest();
+    Future.microtask(retest);
+  }
+
+  Future<void> retest() async {
+    final results = await service.execute(widget.main);
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      this.results = results;
+    });
   }
 
   @override
@@ -68,12 +71,12 @@ class _TestRunnerState extends State<TestRunner> {
                       showsOverlay = true;
                     });
                   },
-                  child: TestIndicator(results: service.value),
+                  child: TestIndicator(results: results),
                 ),
-                if (!service.value.ok && showsOverlay)
+                if (!results.ok && showsOverlay)
                   Positioned.fill(
                     child: TestResultsView(
-                      results: service.value,
+                      results: results,
                       onClose: () {
                         setState(() {
                           showsOverlay = false;
@@ -94,8 +97,7 @@ class TestResultsView extends StatelessWidget {
   final TestGroupResults results;
   final VoidCallback onClose;
 
-  const TestResultsView(
-      {super.key, required this.results, required this.onClose});
+  const TestResultsView({super.key, required this.results, required this.onClose});
 
   Widget _buildError(TestResultError error) {
     return Padding(
@@ -186,8 +188,7 @@ class TestIndicator extends StatelessWidget {
     return Align(
       alignment: Alignment.bottomLeft,
       child: Container(
-        margin:
-            EdgeInsets.only(left: max(data.padding.bottom - 8, 4), bottom: 4),
+        margin: EdgeInsets.only(left: max(data.padding.bottom - 8, 4), bottom: 4),
         padding: const EdgeInsets.only(left: 4, right: 4),
         child: Builder(
           builder: (context) {

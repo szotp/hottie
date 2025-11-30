@@ -1,2 +1,2 @@
-export 'src/native.dart' show hottieInner;
+export 'src/isolated_runner.dart' show hottieInner;
 export 'src/widget.dart' show TestRunner;
