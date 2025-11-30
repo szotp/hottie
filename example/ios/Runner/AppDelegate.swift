@@ -9,7 +9,6 @@ import hottie
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     GeneratedPluginRegistrant.register(with: self)
-    HottiePlugin.instance.setRoot()
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 }

@@ -14,18 +14,29 @@ PlatformException _createConnectionError(String channelName) {
     message: 'Unable to establish connection on channel: "$channelName".',
   );
 }
-
 bool _deepEquals(Object? a, Object? b) {
   if (a is List && b is List) {
-    return a.length == b.length && a.indexed.every(((int, dynamic) item) => _deepEquals(item.$2, b[item.$1]));
+    return a.length == b.length &&
+        a.indexed
+        .every(((int, dynamic) item) => _deepEquals(item.$2, b[item.$1]));
   }
   if (a is Map && b is Map) {
-    return a.length == b.length &&
-        a.entries.every((MapEntry<Object?, Object?> entry) => (b as Map<Object?, Object?>).containsKey(entry.key) && _deepEquals(entry.value, b[entry.key]));
+    return a.length == b.length && a.entries.every((MapEntry<Object?, Object?> entry) =>
+        (b as Map<Object?, Object?>).containsKey(entry.key) &&
+        _deepEquals(entry.value, b[entry.key]));
   }
   return a == b;
 }
 
+
+enum TestStatus {
+  starting,
+  waiting,
+  running,
+  finished,
+}
+
+/// `dart run pigeon --input pigeons.dart `
 class TestResult {
   TestResult({
     required this.name,
@@ -44,8 +55,7 @@ class TestResult {
   }
 
   Object encode() {
-    return _toList();
-  }
+    return _toList();  }
 
   static TestResult decode(Object result) {
     result as List<Object?>;
@@ -69,7 +79,8 @@ class TestResult {
 
   @override
   // ignore: avoid_equals_and_hash_code_on_mutable_classes
-  int get hashCode => Object.hashAll(_toList());
+  int get hashCode => Object.hashAll(_toList())
+;
 }
 
 class TestResultError {
@@ -86,8 +97,7 @@ class TestResultError {
   }
 
   Object encode() {
-    return _toList();
-  }
+    return _toList();  }
 
   static TestResultError decode(Object result) {
     result as List<Object?>;
@@ -110,10 +120,11 @@ class TestResultError {
 
   @override
   // ignore: avoid_equals_and_hash_code_on_mutable_classes
-  int get hashCode => Object.hashAll(_toList());
+  int get hashCode => Object.hashAll(_toList())
+;
 }
 
-class TestGroupResults {
+class TestGroupResults extends FromIsolate {
   TestGroupResults({
     required this.skipped,
     required this.failed,
@@ -135,8 +146,7 @@ class TestGroupResults {
   }
 
   Object encode() {
-    return _toList();
-  }
+    return _toList();  }
 
   static TestGroupResults decode(Object result) {
     result as List<Object?>;
@@ -161,39 +171,37 @@ class TestGroupResults {
 
   @override
   // ignore: avoid_equals_and_hash_code_on_mutable_classes
-  int get hashCode => Object.hashAll(_toList());
+  int get hashCode => Object.hashAll(_toList())
+;
 }
 
-sealed class IsolateMessage {}
-
-class RunTestsIsolateMessage extends IsolateMessage {
-  RunTestsIsolateMessage({
-    required this.rawHandle,
+class TestStatusFromIsolate extends FromIsolate {
+  TestStatusFromIsolate({
+    required this.status,
   });
 
-  int rawHandle;
+  TestStatus status;
 
   List<Object?> _toList() {
     return <Object?>[
-      rawHandle,
+      status,
     ];
   }
 
   Object encode() {
-    return _toList();
-  }
+    return _toList();  }
 
-  static RunTestsIsolateMessage decode(Object result) {
+  static TestStatusFromIsolate decode(Object result) {
     result as List<Object?>;
-    return RunTestsIsolateMessage(
-      rawHandle: result[0]! as int,
+    return TestStatusFromIsolate(
+      status: result[0]! as TestStatus,
     );
   }
 
   @override
   // ignore: avoid_equals_and_hash_code_on_mutable_classes
   bool operator ==(Object other) {
-    if (other is! RunTestsIsolateMessage || other.runtimeType != runtimeType) {
+    if (other is! TestStatusFromIsolate || other.runtimeType != runtimeType) {
       return false;
     }
     if (identical(this, other)) {
@@ -204,49 +212,13 @@ class RunTestsIsolateMessage extends IsolateMessage {
 
   @override
   // ignore: avoid_equals_and_hash_code_on_mutable_classes
-  int get hashCode => Object.hashAll(_toList());
+  int get hashCode => Object.hashAll(_toList())
+;
 }
 
-class SetCurrentDirectoryIsolateMessage extends IsolateMessage {
-  SetCurrentDirectoryIsolateMessage({
-    required this.root,
-  });
-
-  String root;
-
-  List<Object?> _toList() {
-    return <Object?>[
-      root,
-    ];
-  }
-
-  Object encode() {
-    return _toList();
-  }
-
-  static SetCurrentDirectoryIsolateMessage decode(Object result) {
-    result as List<Object?>;
-    return SetCurrentDirectoryIsolateMessage(
-      root: result[0]! as String,
-    );
-  }
-
-  @override
-  // ignore: avoid_equals_and_hash_code_on_mutable_classes
-  bool operator ==(Object other) {
-    if (other is! SetCurrentDirectoryIsolateMessage || other.runtimeType != runtimeType) {
-      return false;
-    }
-    if (identical(this, other)) {
-      return true;
-    }
-    return _deepEquals(encode(), other.encode());
-  }
-
-  @override
-  // ignore: avoid_equals_and_hash_code_on_mutable_classes
-  int get hashCode => Object.hashAll(_toList());
+sealed class FromIsolate {
 }
+
 
 class _PigeonCodec extends StandardMessageCodec {
   const _PigeonCodec();
@@ -255,19 +227,19 @@ class _PigeonCodec extends StandardMessageCodec {
     if (value is int) {
       buffer.putUint8(4);
       buffer.putInt64(value);
-    } else if (value is TestResult) {
+    }    else if (value is TestStatus) {
       buffer.putUint8(129);
-      writeValue(buffer, value.encode());
-    } else if (value is TestResultError) {
+      writeValue(buffer, value.index);
+    }    else if (value is TestResult) {
       buffer.putUint8(130);
       writeValue(buffer, value.encode());
-    } else if (value is TestGroupResults) {
+    }    else if (value is TestResultError) {
       buffer.putUint8(131);
       writeValue(buffer, value.encode());
-    } else if (value is RunTestsIsolateMessage) {
+    }    else if (value is TestGroupResults) {
       buffer.putUint8(132);
       writeValue(buffer, value.encode());
-    } else if (value is SetCurrentDirectoryIsolateMessage) {
+    }    else if (value is TestStatusFromIsolate) {
       buffer.putUint8(133);
       writeValue(buffer, value.encode());
     } else {
@@ -278,27 +250,28 @@ class _PigeonCodec extends StandardMessageCodec {
   @override
   Object? readValueOfType(int type, ReadBuffer buffer) {
     switch (type) {
-      case 129:
+      case 129: 
+        final int? value = readValue(buffer) as int?;
+        return value == null ? null : TestStatus.values[value];
+      case 130: 
         return TestResult.decode(readValue(buffer)!);
-      case 130:
+      case 131: 
         return TestResultError.decode(readValue(buffer)!);
-      case 131:
+      case 132: 
         return TestGroupResults.decode(readValue(buffer)!);
-      case 132:
-        return RunTestsIsolateMessage.decode(readValue(buffer)!);
-      case 133:
-        return SetCurrentDirectoryIsolateMessage.decode(readValue(buffer)!);
+      case 133: 
+        return TestStatusFromIsolate.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
     }
   }
 }
 
-class IsolateStarted {
-  /// Constructor for [IsolateStarted].  The [binaryMessenger] named argument is
+class SpawnHostApi {
+  /// Constructor for [SpawnHostApi].  The [binaryMessenger] named argument is
   /// available for dependency injection.  If it is left null, the default
   /// BinaryMessenger will be used which routes to the host platform.
-  IsolateStarted({BinaryMessenger? binaryMessenger, String messageChannelSuffix = ''})
+  SpawnHostApi({BinaryMessenger? binaryMessenger, String messageChannelSuffix = ''})
       : pigeonVar_binaryMessenger = binaryMessenger,
         pigeonVar_messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
   final BinaryMessenger? pigeonVar_binaryMessenger;
@@ -307,15 +280,39 @@ class IsolateStarted {
 
   final String pigeonVar_messageChannelSuffix;
 
-  Future<void> initialize(int rawHandle) async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.hottie.IsolateStarted.initialize$pigeonVar_messageChannelSuffix';
+  Future<void> spawn(String entryPoint, List<String> args) async {
+    final String pigeonVar_channelName = 'dev.flutter.pigeon.hottie.SpawnHostApi.spawn$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[rawHandle]);
-    final List<Object?>? pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[entryPoint, args]);
+    final List<Object?>? pigeonVar_replyList =
+        await pigeonVar_sendFuture as List<Object?>?;
+    if (pigeonVar_replyList == null) {
+      throw _createConnectionError(pigeonVar_channelName);
+    } else if (pigeonVar_replyList.length > 1) {
+      throw PlatformException(
+        code: pigeonVar_replyList[0]! as String,
+        message: pigeonVar_replyList[1] as String?,
+        details: pigeonVar_replyList[2],
+      );
+    } else {
+      return;
+    }
+  }
+
+  Future<void> close() async {
+    final String pigeonVar_channelName = 'dev.flutter.pigeon.hottie.SpawnHostApi.close$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final List<Object?>? pigeonVar_replyList =
+        await pigeonVar_sendFuture as List<Object?>?;
     if (pigeonVar_replyList == null) {
       throw _createConnectionError(pigeonVar_channelName);
     } else if (pigeonVar_replyList.length > 1) {

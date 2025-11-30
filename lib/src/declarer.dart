@@ -19,22 +19,9 @@ Future<TestGroupResults> runTestsFromRawCallback(int input) {
   return runTests(PluginUtilities.getCallbackFromHandle(CallbackHandle.fromRawHandle(input))! as TestMain);
 }
 
-class _HottieBinding extends AutomatedTestWidgetsFlutterBinding {
-  static final instance = _HottieBinding();
-
-  @override
-  void scheduleWarmUpFrame() {
-    if (!inTest) {
-      return;
-    }
-
-    super.scheduleWarmUpFrame();
-  }
-}
-
 Future<TestGroupResults> runTests(TestMain input) async {
-  final binding = _HottieBinding.instance;
-  binding.platformDispatcher.implicitView?.physicalSize = const Size(800, 600);
+  final binding = AutomatedTestWidgetsFlutterBinding.ensureInitialized();
+  binding.platformDispatcher.implicitView?.physicalSize = const Size(800, 600); // for error when widget testing
 
   final sw = Stopwatch()..start();
   final reporter = await declareAndRunTests(input);

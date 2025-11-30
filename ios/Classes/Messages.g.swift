@@ -128,6 +128,15 @@ func deepHashMessages(value: Any?, hasher: inout Hasher) {
 
     
 
+enum TestStatus: Int {
+  case starting = 0
+  case waiting = 1
+  case running = 2
+  case finished = 3
+}
+
+/// `dart run pigeon --input pigeons.dart `
+///
 /// Generated class from Pigeon that represents data sent in messages.
 struct TestResult: Hashable {
   var name: String
@@ -183,7 +192,7 @@ struct TestResultError: Hashable {
 }
 
 /// Generated class from Pigeon that represents data sent in messages.
-struct TestGroupResults: Hashable {
+struct TestGroupResults: FromIsolate {
   var skipped: Int64
   var failed: [TestResult]
   var passed: [TestResult]
@@ -216,74 +225,53 @@ struct TestGroupResults: Hashable {
 }
 
 /// Generated class from Pigeon that represents data sent in messages.
+struct TestStatusFromIsolate: FromIsolate {
+  var status: TestStatus
+
+
+  // swift-format-ignore: AlwaysUseLowerCamelCase
+  static func fromList(_ pigeonVar_list: [Any?]) -> TestStatusFromIsolate? {
+    let status = pigeonVar_list[0] as! TestStatus
+
+    return TestStatusFromIsolate(
+      status: status
+    )
+  }
+  func toList() -> [Any?] {
+    return [
+      status
+    ]
+  }
+  static func == (lhs: TestStatusFromIsolate, rhs: TestStatusFromIsolate) -> Bool {
+    return deepEqualsMessages(lhs.toList(), rhs.toList())  }
+  func hash(into hasher: inout Hasher) {
+    deepHashMessages(value: toList(), hasher: &hasher)
+  }
+}
+
+/// Generated class from Pigeon that represents data sent in messages.
 /// This protocol should not be extended by any user class outside of the generated file.
-protocol IsolateMessage {
+protocol FromIsolate {
 
-}
-
-/// Generated class from Pigeon that represents data sent in messages.
-struct RunTestsIsolateMessage: IsolateMessage {
-  var rawHandle: Int64
-
-
-  // swift-format-ignore: AlwaysUseLowerCamelCase
-  static func fromList(_ pigeonVar_list: [Any?]) -> RunTestsIsolateMessage? {
-    let rawHandle = pigeonVar_list[0] as! Int64
-
-    return RunTestsIsolateMessage(
-      rawHandle: rawHandle
-    )
-  }
-  func toList() -> [Any?] {
-    return [
-      rawHandle
-    ]
-  }
-  static func == (lhs: RunTestsIsolateMessage, rhs: RunTestsIsolateMessage) -> Bool {
-    return deepEqualsMessages(lhs.toList(), rhs.toList())  }
-  func hash(into hasher: inout Hasher) {
-    deepHashMessages(value: toList(), hasher: &hasher)
-  }
-}
-
-/// Generated class from Pigeon that represents data sent in messages.
-struct SetCurrentDirectoryIsolateMessage: IsolateMessage {
-  var root: String
-
-
-  // swift-format-ignore: AlwaysUseLowerCamelCase
-  static func fromList(_ pigeonVar_list: [Any?]) -> SetCurrentDirectoryIsolateMessage? {
-    let root = pigeonVar_list[0] as! String
-
-    return SetCurrentDirectoryIsolateMessage(
-      root: root
-    )
-  }
-  func toList() -> [Any?] {
-    return [
-      root
-    ]
-  }
-  static func == (lhs: SetCurrentDirectoryIsolateMessage, rhs: SetCurrentDirectoryIsolateMessage) -> Bool {
-    return deepEqualsMessages(lhs.toList(), rhs.toList())  }
-  func hash(into hasher: inout Hasher) {
-    deepHashMessages(value: toList(), hasher: &hasher)
-  }
 }
 
 private class MessagesPigeonCodecReader: FlutterStandardReader {
   override func readValue(ofType type: UInt8) -> Any? {
     switch type {
     case 129:
-      return TestResult.fromList(self.readValue() as! [Any?])
+      let enumResultAsInt: Int? = nilOrValue(self.readValue() as! Int?)
+      if let enumResultAsInt = enumResultAsInt {
+        return TestStatus(rawValue: enumResultAsInt)
+      }
+      return nil
     case 130:
-      return TestResultError.fromList(self.readValue() as! [Any?])
+      return TestResult.fromList(self.readValue() as! [Any?])
     case 131:
-      return TestGroupResults.fromList(self.readValue() as! [Any?])
+      return TestResultError.fromList(self.readValue() as! [Any?])
     case 132:
-      return RunTestsIsolateMessage.fromList(self.readValue() as! [Any?])
+      return TestGroupResults.fromList(self.readValue() as! [Any?])
     case 133:
-      return SetCurrentDirectoryIsolateMessage.fromList(self.readValue() as! [Any?])
+      return TestStatusFromIsolate.fromList(self.readValue() as! [Any?])
     default:
       return super.readValue(ofType: type)
     }
@@ -292,19 +280,19 @@ private class MessagesPigeonCodecReader: FlutterStandardReader {
 
 private class MessagesPigeonCodecWriter: FlutterStandardWriter {
   override func writeValue(_ value: Any) {
-    if let value = value as? TestResult {
+    if let value = value as? TestStatus {
       super.writeByte(129)
-      super.writeValue(value.toList())
-    } else if let value = value as? TestResultError {
+      super.writeValue(value.rawValue)
+    } else if let value = value as? TestResult {
       super.writeByte(130)
       super.writeValue(value.toList())
-    } else if let value = value as? TestGroupResults {
+    } else if let value = value as? TestResultError {
       super.writeByte(131)
       super.writeValue(value.toList())
-    } else if let value = value as? RunTestsIsolateMessage {
+    } else if let value = value as? TestGroupResults {
       super.writeByte(132)
       super.writeValue(value.toList())
-    } else if let value = value as? SetCurrentDirectoryIsolateMessage {
+    } else if let value = value as? TestStatusFromIsolate {
       super.writeByte(133)
       super.writeValue(value.toList())
     } else {
@@ -328,30 +316,45 @@ class MessagesPigeonCodec: FlutterStandardMessageCodec, @unchecked Sendable {
 }
 
 /// Generated protocol from Pigeon that represents a handler of messages from Flutter.
-protocol IsolateStarted {
-  func initialize(rawHandle: Int64) throws
+protocol SpawnHostApi {
+  func spawn(entryPoint: String, args: [String]) throws
+  func close() throws
 }
 
 /// Generated setup class from Pigeon to handle messages through the `binaryMessenger`.
-class IsolateStartedSetup {
+class SpawnHostApiSetup {
   static var codec: FlutterStandardMessageCodec { MessagesPigeonCodec.shared }
-  /// Sets up an instance of `IsolateStarted` to handle messages through the `binaryMessenger`.
-  static func setUp(binaryMessenger: FlutterBinaryMessenger, api: IsolateStarted?, messageChannelSuffix: String = "") {
+  /// Sets up an instance of `SpawnHostApi` to handle messages through the `binaryMessenger`.
+  static func setUp(binaryMessenger: FlutterBinaryMessenger, api: SpawnHostApi?, messageChannelSuffix: String = "") {
     let channelSuffix = messageChannelSuffix.count > 0 ? ".\(messageChannelSuffix)" : ""
-    let initializeChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.hottie.IsolateStarted.initialize\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    let spawnChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.hottie.SpawnHostApi.spawn\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {
-      initializeChannel.setMessageHandler { message, reply in
+      spawnChannel.setMessageHandler { message, reply in
         let args = message as! [Any?]
-        let rawHandleArg = args[0] as! Int64
+        let entryPointArg = args[0] as! String
+        let argsArg = args[1] as! [String]
         do {
-          try api.initialize(rawHandle: rawHandleArg)
+          try api.spawn(entryPoint: entryPointArg, args: argsArg)
           reply(wrapResult(nil))
         } catch {
           reply(wrapError(error))
         }
       }
     } else {
-      initializeChannel.setMessageHandler(nil)
+      spawnChannel.setMessageHandler(nil)
+    }
+    let closeChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.hottie.SpawnHostApi.close\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      closeChannel.setMessageHandler { _, reply in
+        do {
+          try api.close()
+          reply(wrapResult(nil))
+        } catch {
+          reply(wrapError(error))
+        }
+      }
+    } else {
+      closeChannel.setMessageHandler(nil)
     }
   }
 }

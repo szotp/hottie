@@ -2,57 +2,32 @@ import Flutter
 import UIKit
 
 #if DEBUG
-public class HottiePlugin: NSObject, FlutterPlugin {
+public class HottiePlugin: NSObject, FlutterPlugin, SpawnHostApi {
     public static func register(with registrar: FlutterPluginRegistrar) {
-        let channel = FlutterMethodChannel(name: "com.szotp.Hottie", binaryMessenger: registrar.messenger())
-        
-        registrar.addMethodCallDelegate(instance, channel: channel)
+        SpawnHostApiSetup.setUp(binaryMessenger: registrar.messenger(), api: instance)
     }
     
     public static let instance = HottiePlugin()
+
+    let group = FlutterEngineGroup(name: "hottie", project: nil)
     
-    var root: URL?
+    var engine: FlutterEngine?
     
-    public func setRoot(path: StaticString = #file) {
-        #if DEBUG
-        var url = URL(fileURLWithPath: "\(path)")
-        let fm = FileManager.default
+    func spawn(entryPoint: String, args: [String]) throws {
+        // engine = nil
         
-        while !fm.fileExists(atPath: url.appendingPathComponent("pubspec.yaml").path) {
-            url = url.deletingLastPathComponent()
-        }
-        
-        root = url.appendingPathComponent("test")
-        
-        print(root!)
-        #endif
+        let options = FlutterEngineGroupOptions()
+        options.entrypoint = entryPoint
+        options.entrypointArgs = args
+        engine = self.group.makeEngine(with: options)
     }
     
-    lazy var engine = FlutterEngine(name: "hottie", project: nil, allowHeadlessExecution: true)
-    
-    public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-        switch call.method {
-        case "initialize":
-            let handle = (call.arguments as! [String: Any])["handle"] as! Int64
-            let entryPoint = FlutterCallbackCache.lookupCallbackInformation(handle)
-            let ok = engine.run(withEntrypoint: entryPoint?.callbackName, libraryURI: entryPoint?.callbackLibraryPath)
-            
-            var returns: [String: Any] = [:]
-            returns["ok"] = ok
-            if let root = root {
-                returns["root"] = root.path
-            }
-            
-            result(returns)
-        default:
-            assertionFailure()
-            result(nil)
-        }
+    func close() throws {
+        engine = nil
     }
 }
 #else
 public class HottiePlugin: NSObject, FlutterPlugin {
     public static func register(with registrar: FlutterPluginRegistrar) {}
-    public func setRoot(path: StaticString = #file) {}
 }
 #endif

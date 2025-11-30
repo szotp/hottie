@@ -1,10 +1,12 @@
 import 'package:pigeon/pigeon.dart';
 
 @HostApi()
-abstract class IsolateStarted {
-  void initialize(int rawHandle);
+abstract class SpawnHostApi {
+  void spawn(String entryPoint, List<String> args);
+  void close();
 }
 
+/// `dart run pigeon --input pigeons.dart `
 @ConfigurePigeon(
   PigeonOptions(
     dartOut: 'lib/src/model.g.dart',
@@ -22,18 +24,21 @@ class TestResultError {
   late final String message;
 }
 
-class TestGroupResults {
+class TestGroupResults extends FromIsolate {
   late final int skipped;
   late final List<TestResult> failed;
   late final List<TestResult> passed;
 }
 
-sealed class IsolateMessage {}
-
-final class RunTestsIsolateMessage extends IsolateMessage {
-  late final int rawHandle;
+enum TestStatus {
+  starting,
+  waiting,
+  running,
+  finished;
 }
 
-class SetCurrentDirectoryIsolateMessage extends IsolateMessage {
-  late final String root;
+class TestStatusFromIsolate extends FromIsolate {
+  late final TestStatus status;
 }
+
+sealed class FromIsolate {}

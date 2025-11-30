@@ -1,1 +1,1 @@
-int multiplyTwice(int a, int b) => a * b + 1;
+int multiplyTwice(int a, int b) => a * b;

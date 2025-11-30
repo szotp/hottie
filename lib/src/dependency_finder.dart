@@ -10,24 +10,20 @@ import 'package:vm_service/vm_service.dart';
 import 'package:vm_service/vm_service_io.dart';
 
 class ScriptChangeObserver {
-  final DependencyFinder _finder;
-
   Map<String, String>? _previousState; // map from script uri to script hash
 
-  ScriptChangeObserver(this._finder);
-
-  static Future<ScriptChangeObserver> connect() async {
-    final finder = await DependencyFinder.connect();
-    final observer = ScriptChangeObserver(finder);
-    await observer.checkLibraries();
-    return observer;
+  ScriptChangeObserver() {
+    checkLibraries();
   }
 
   Future<List<Uri>> checkLibraries() async {
     final sw = Stopwatch();
     sw.start();
+    final finder = await DependencyFinder.connect();
+
     final previous = _previousState;
-    final scripts = await _finder.findCurrentPackageScripts(onlyTests: true);
+    final scripts = await finder.findCurrentPackageScripts(onlyTests: true);
+    await finder.dispose();
     final currentState = <String, String>{};
     final changed = <Uri>[];
 
@@ -42,10 +38,6 @@ class ScriptChangeObserver {
     _previousState = currentState;
     logHottie('checkLibraries took ${sw.elapsedMilliseconds}ms');
     return changed;
-  }
-
-  Future<void> runChangedTests() async {
-    logHottie('runChangedTests 2');
   }
 }
 

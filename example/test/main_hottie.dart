@@ -9,16 +9,13 @@ import 'widgets_test.dart' as t2;
 
 Future<void> main() async {
   runApp(
-    TestRunner(main: testAll, child: m.MyApp()),
+    TestRunner(main: () {}, child: m.MyApp()),
   );
 }
 
 @pragma('vm:entry-point')
-void hottie() => hottieInner();
-
-@pragma('vm:entry-point')
-void testAll() {
-  t1.main();
-  t2.main();
-  t3.main();
-}
+void hottie(List<String> args) => runInsideIsolate(args, {
+      'calculator_test.dart': t1.main,
+      'standard_test.dart': t2.main,
+      'widgets_test.dart': t3.main,
+    });

@@ -1,77 +1,58 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
 
-import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:hottie/src/declarer.dart';
-import 'package:hottie/src/dependency_finder.dart';
 import 'package:hottie/src/logger.dart';
 import 'package:hottie/src/model.g.dart';
-import 'package:hottie/src/widget.dart';
 
-const _codec = IsolateStarted.pigeonChannelCodec;
-const _channel = MethodChannel('com.szotp.Hottie');
+const _codec = SpawnHostApi.pigeonChannelCodec;
+const _onResultsPort = 'IsolatedRunnerService._onResults';
 
 class IsolatedRunnerService {
-  final void Function(TestGroupResults) onResults;
+  final void Function(TestGroupResults) _onResults;
+  final _api = SpawnHostApi();
+  final _port = ReceivePort();
 
-  static const fromIsolateName = 'com.szotp.Hottie.fromIsolate';
-  static const toIsolateName = 'com.szotp.Hottie.toIsolate';
-  ReceivePort fromIsolate = ReceivePort();
-  SendPort? toIsolate;
+  final status = ValueNotifier(TestStatus.starting);
 
-  IsolatedRunnerService(this.onResults);
-
-  Future<void> _initialize() async {
-    toIsolate = IsolateNameServer.lookupPortByName(toIsolateName);
-    final alreadyRunning = toIsolate != null;
-
-    _registerPort(fromIsolate.sendPort, fromIsolateName);
-    fromIsolate.forEach(_onMessage);
-
-    if (!alreadyRunning) {
-      final handle = PluginUtilities.getCallbackHandle(hottieInner)!;
-
-      final Map results = await _channel.invokeMethod(
-        'initialize',
-        {'handle': handle.toRawHandle()},
-      ) as Map;
-
-      final root = results["root"] as String?;
-
-      while (toIsolate == null) {
-        toIsolate = IsolateNameServer.lookupPortByName(toIsolateName);
-        await Future.delayed(const Duration(milliseconds: 10));
-      }
-
-      if (root != null) {
-        final msg = SetCurrentDirectoryIsolateMessage(root: root);
-        _send(msg);
-
-        assert(Directory(msg.root).existsSync(), "Directory ${msg.root} doesn't exist");
-      } else {
-        logHottie('running without file access');
-      }
-    }
+  IsolatedRunnerService(this._onResults) {
+    _registerPort(_port.sendPort, _onResultsPort);
+    _port.forEach(_onMessage);
   }
 
-  void _send(IsolateMessage message) {
-    toIsolate?.send(_codec.encodeMessage(message));
-  }
-
-  // ignore: unreachable_from_main
   Future<void> execute(TestMain testMain) async {
-    if (toIsolate == null) {
-      await _initialize();
-    }
+    status.value = TestStatus.starting;
+    await _api.spawn('hottie', ['test']);
 
-    _send(RunTestsIsolateMessage(rawHandle: PluginUtilities.getCallbackHandle(testMain)!.toRawHandle()));
+    final sw = Stopwatch();
+    sw.start();
+    await status.waitFor(TestStatus.running).timeout(const Duration(seconds: 1), onTimeout: () {
+      logHottie('Trying again...');
+      _api.spawn('hottie', ['test']);
+    });
+    sw.stop();
+    logHottie(sw.elapsedMilliseconds);
+
+    await status.waitFor(TestStatus.running).timeout(const Duration(seconds: 1), onTimeout: () {
+      logHottie('Failed...');
+      _api.close();
+    });
   }
 
   void _onMessage(dynamic message) {
-    final decoded = _codec.decodeMessage(message as ByteData)! as TestGroupResults;
-    onResults(decoded);
+    final decoded = _codec.decodeMessage(message as ByteData)! as FromIsolate;
+
+    switch (decoded) {
+      case final TestStatusFromIsolate r:
+        status.value = r.status;
+      case final TestGroupResults r:
+        assert(status.value == TestStatus.running);
+        _api.close();
+        status.value = TestStatus.finished;
+        _onResults(r);
+    }
   }
 }
 
@@ -87,52 +68,39 @@ void _registerPort(SendPort port, String name) {
   assert(ok);
 }
 
-@pragma('vm:entry-point')
-Future<void> hottieInner() async {
-  final toIsolate = ReceivePort();
-  _registerPort(toIsolate.sendPort, IsolatedRunnerService.toIsolateName);
+Future<void> runInsideIsolate(List<String> args, Map<String, TestMain> tests) async {
+  final port = IsolateNameServer.lookupPortByName(_onResultsPort)!;
+  void send(FromIsolate message) => port.send(_codec.encodeMessage(message));
 
-  // for unclear reasons, this delay is needed to prevent errors from pausing the isolate
-  if (Platform.isMacOS) {
-    await Future.delayed(const Duration(milliseconds: 500));
-  }
+  logHottie('runInsideIsolate');
+  send(TestStatusFromIsolate(status: TestStatus.running));
+  logHottie('runInsideIsolate sent');
 
-  final finder = await ScriptChangeObserver.connect();
-  final fromIsolate = IsolateNameServer.lookupPortByName(IsolatedRunnerService.fromIsolateName)!;
-
-  Future<TestGroupResults> onRunTests(RunTestsIsolateMessage message) async {
-    final libs = await finder.checkLibraries();
-
-    if (libs.isEmpty) {
-      logHottie('skipping tests');
-      return TestGroupResultsExtension.emptyResults();
-    }
-    logHottie(libs);
-
-    final output = await runTests(message.call);
-    return output;
-  }
-
-  toIsolate.forEach((event) async {
-    try {
-      final message = _codec.decodeMessage(event as ByteData)! as IsolateMessage;
-
-      switch (message) {
-        case RunTestsIsolateMessage():
-          final output = await onRunTests(message);
-          fromIsolate.send(_codec.encodeMessage(output));
-        case SetCurrentDirectoryIsolateMessage():
-          setTestDirectory(message.root);
-      }
-    } catch (e) {
-      logHottie('_runner: got error while processing $event: $e');
+  final results = await runTests(() {
+    for (final x in tests.values) {
+      x();
     }
   });
+
+  send(results);
 }
 
-extension on RunTestsIsolateMessage {
-  void call() {
-    final func = PluginUtilities.getCallbackFromHandle(CallbackHandle.fromRawHandle(rawHandle))! as TestMain;
-    func();
+extension ValueNotifierExtension<T> on ValueNotifier<T> {
+  Future<void> waitFor(T value) async {
+    if (this.value == value) {
+      return;
+    }
+
+    final completer = Completer();
+
+    void handler() {
+      if (this.value == value) {
+        removeListener(handler);
+        completer.complete();
+      }
+    }
+
+    addListener(handler);
+    return completer.future;
   }
 }

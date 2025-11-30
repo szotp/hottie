@@ -1,9 +1,8 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:hottie/src/isolated_runner.dart';
-import 'package:hottie/src/logger.dart';
 import 'package:hottie/src/model.g.dart';
+import 'package:hottie/src/testing_controller.dart';
 
 class TestRunner extends StatefulWidget {
   /// Must be a static method
@@ -23,35 +22,21 @@ class TestRunner extends StatefulWidget {
 }
 
 class _TestRunnerState extends State<TestRunner> {
-  late final service = IsolatedRunnerService((results) {
-    if (!mounted) {
-      throw UnimplementedError();
-    }
-
-    setState(() {
-      this.results = results;
-      logHottie('failed: ${results.failed.length} passed: ${results.passed.length}');
-    });
-  });
+  late final _controller = TestingController(widget.main);
   bool showsOverlay = true;
 
   TestGroupResults results = TestGroupResultsExtension.emptyResults();
 
-  @override
-  void initState() {
-    super.initState();
-    retest();
-  }
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   retest();
+  // }
 
   @override
   void reassemble() {
     super.reassemble();
-    logHottie('reassemble');
-    Future.delayed(const Duration(milliseconds: 10)).then((_) => retest());
-  }
-
-  Future<void> retest() async {
-    await service.execute(widget.main);
+    Future.delayed(const Duration(milliseconds: 10)).then((_) => _controller.retest());
   }
 
   @override
