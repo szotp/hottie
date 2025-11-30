@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hottie/hottie.dart';
 
+import 'calculator_test.dart' as t3;
 import 'standard_test.dart' as t1;
 import 'widgets_test.dart' as t2;
 
@@ -19,4 +20,5 @@ void hottie() => hottieInner();
 void testAll() {
   t1.main();
   t2.main();
+  t3.main();
 }

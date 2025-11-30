@@ -17,6 +17,7 @@ dependencies:
   flutter_test: 
     sdk: flutter
   test_api: ^0.7.7
+  vm_service: any
 
 dev_dependencies:
   lint: 
