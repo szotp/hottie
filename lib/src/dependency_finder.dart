@@ -55,7 +55,9 @@ class DependencyFinder {
     final serverUri = serviceInfo.serverUri!;
     final wsUri = 'ws://${serverUri.authority}${serverUri.path}ws';
 
+    logHottie('Connecting to vm_service...');
     final vm = await vmServiceConnectUri(wsUri);
+    logHottie('Connected.');
     return DependencyFinder(vm);
   }
 

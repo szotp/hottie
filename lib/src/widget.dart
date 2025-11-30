@@ -23,7 +23,16 @@ class TestRunner extends StatefulWidget {
 }
 
 class _TestRunnerState extends State<TestRunner> {
-  final service = IsolatedRunnerService();
+  late final service = IsolatedRunnerService((results) {
+    if (!mounted) {
+      throw UnimplementedError();
+    }
+
+    setState(() {
+      this.results = results;
+      logHottie('failed: ${results.failed.length} passed: ${results.passed.length}');
+    });
+  });
   bool showsOverlay = true;
 
   TestGroupResults results = TestGroupResultsExtension.emptyResults();
@@ -37,19 +46,12 @@ class _TestRunnerState extends State<TestRunner> {
   @override
   void reassemble() {
     super.reassemble();
-    Future.microtask(retest);
+    logHottie('reassemble');
+    Future.delayed(const Duration(milliseconds: 10)).then((_) => retest());
   }
 
   Future<void> retest() async {
-    final results = await service.execute(widget.main);
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      this.results = results;
-      logHottie('failed: ${results.failed.length} passed: ${results.passed.length}');
-    });
+    await service.execute(widget.main);
   }
 
   @override

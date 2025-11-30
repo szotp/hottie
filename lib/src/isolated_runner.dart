@@ -14,10 +14,14 @@ const _codec = IsolateStarted.pigeonChannelCodec;
 const _channel = MethodChannel('com.szotp.Hottie');
 
 class IsolatedRunnerService {
+  final void Function(TestGroupResults) onResults;
+
   static const fromIsolateName = 'com.szotp.Hottie.fromIsolate';
   static const toIsolateName = 'com.szotp.Hottie.toIsolate';
   ReceivePort fromIsolate = ReceivePort();
   SendPort? toIsolate;
+
+  IsolatedRunnerService(this.onResults);
 
   Future<void> _initialize() async {
     toIsolate = IsolateNameServer.lookupPortByName(toIsolateName);
@@ -57,25 +61,17 @@ class IsolatedRunnerService {
   }
 
   // ignore: unreachable_from_main
-  Future<TestGroupResults> execute(TestMain testMain) async {
+  Future<void> execute(TestMain testMain) async {
     if (toIsolate == null) {
       await _initialize();
     }
 
-    final completer = Completer<ByteData>();
-    _completer?.complete(null);
-    _completer = completer;
     _send(RunTestsIsolateMessage(rawHandle: PluginUtilities.getCallbackHandle(testMain)!.toRawHandle()));
-
-    final data = await completer.future;
-    return _codec.decodeMessage(data)! as TestGroupResults;
   }
 
-  Completer? _completer;
-
   void _onMessage(dynamic message) {
-    _completer?.complete(message);
-    _completer = null;
+    final decoded = _codec.decodeMessage(message as ByteData)! as TestGroupResults;
+    onResults(decoded);
   }
 }
 
@@ -102,6 +98,7 @@ Future<void> hottieInner() async {
   }
 
   final finder = await ScriptChangeObserver.connect();
+  final fromIsolate = IsolateNameServer.lookupPortByName(IsolatedRunnerService.fromIsolateName)!;
 
   Future<TestGroupResults> onRunTests(RunTestsIsolateMessage message) async {
     final libs = await finder.checkLibraries();
@@ -116,16 +113,14 @@ Future<void> hottieInner() async {
     return output;
   }
 
-  await toIsolate.forEach((event) async {
+  toIsolate.forEach((event) async {
     try {
       final message = _codec.decodeMessage(event as ByteData)! as IsolateMessage;
 
       switch (message) {
         case RunTestsIsolateMessage():
           final output = await onRunTests(message);
-          final fromIsolate = IsolateNameServer.lookupPortByName(IsolatedRunnerService.fromIsolateName);
-          assert(fromIsolate != null);
-          fromIsolate!.send(_codec.encodeMessage(output));
+          fromIsolate.send(_codec.encodeMessage(output));
         case SetCurrentDirectoryIsolateMessage():
           setTestDirectory(message.root);
       }

@@ -1,2 +1,1 @@
-int multiplyTwice(int a, int b) => a * b;
-int lol() => 200;
+int multiplyTwice(int a, int b) => a * b + 1;
