@@ -9,30 +9,43 @@ import 'package:hottie/src/logger.dart';
 import 'package:vm_service/vm_service.dart';
 import 'package:vm_service/vm_service_io.dart';
 
-Future<void> printLibraries() async {
+Future<ScriptChangeObserver> printLibraries() async {
   final finder = await DependencyFinder.connect();
-
-  final sw = Stopwatch()..start();
-  final libraries = await finder.findCurrentPackageLibraries();
-  sw.stop();
-
-  for (final entry in libraries.where((x) => x.isProbablyTest)) {
-    final nested = entry.getNestedDependencies();
-    logHottie(nested);
-  }
-
-  await finder.dispose();
+  final observer = ScriptChangeObserver(finder);
+  await observer.checkLibraries();
+  return observer;
 }
 
 class ScriptChangeObserver {
-  final void Function(ScriptRef) onChangeDetected;
+  final DependencyFinder _finder;
 
-  // uses DependencyFinder to
+  Map<String, String>? _previousState; // map from script uri to script hash
 
-  // var _previousState: Map<String, String>? // map from script uri to script
+  ScriptChangeObserver(this._finder);
 
-  void checkLibraries() {
-    // run findCurrentPackageScripts to check if any tests were updated sicen previous run
+  Future<List<Uri>> checkLibraries() async {
+    final sw = Stopwatch();
+    sw.start();
+    final previous = _previousState;
+    final scripts = await _finder.findCurrentPackageScripts(onlyTests: true);
+    final currentState = <String, String>{};
+    final changed = <Uri>[];
+
+    for (final script in scripts) {
+      final key = script.uri!;
+      currentState[key] = script.id!;
+
+      if (previous != null && previous[key] != script.id!) {
+        changed.add(Uri.parse(script.uri!));
+      }
+    }
+    _previousState = currentState;
+    logHottie('checkLibraries took ${sw.elapsedMilliseconds}ms');
+    return changed;
+  }
+
+  Future<void> runChangedTests() async {
+    logHottie('runChangedTests 2');
   }
 }
 
@@ -52,9 +65,14 @@ class DependencyFinder {
 
   final _isolateId = Service.getIsolateId(iso.Isolate.current)!;
 
-  Future<List<ScriptRef>> findCurrentPackageScripts() async {
+  Future<List<ScriptRef>> findCurrentPackageScripts({bool onlyTests = false}) async {
     final scripts = await _vm.getScripts(_isolateId);
     final tests = scripts.scripts!.where((x) => x.isTest).toList();
+
+    if (onlyTests) {
+      return tests;
+    }
+
     final isCurrentPackage = IsCurrentPackage.fromScriptRefs(tests);
     return scripts.scripts!.where(isCurrentPackage.checkScriptRef).toList();
   }

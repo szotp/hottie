@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:hottie/src/dependency_finder.dart';
 import 'package:hottie/src/isolated_runner.dart';
+import 'package:hottie/src/logger.dart';
 import 'package:hottie/src/model.g.dart';
 
 class TestRunner extends StatefulWidget {
@@ -50,6 +51,7 @@ class _TestRunnerState extends State<TestRunner> {
 
     setState(() {
       this.results = results;
+      logHottie('failed: ${results.failed.length} passed: ${results.passed.length}');
     });
   }
 
