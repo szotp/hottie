@@ -5,8 +5,10 @@ import 'dart:ui';
 
 import 'package:flutter/services.dart';
 import 'package:hottie/src/declarer.dart';
+import 'package:hottie/src/dependency_finder.dart';
 import 'package:hottie/src/logger.dart';
 import 'package:hottie/src/model.g.dart';
+import 'package:hottie/src/widget.dart';
 
 const _codec = IsolateStarted.pigeonChannelCodec;
 const _channel = MethodChannel('com.szotp.Hottie');
@@ -91,7 +93,6 @@ void _registerPort(SendPort port, String name) {
 
 @pragma('vm:entry-point')
 Future<void> hottieInner() async {
-  PlatformDispatcher.instance.setIsolateDebugName('hottie');
   final toIsolate = ReceivePort();
   _registerPort(toIsolate.sendPort, IsolatedRunnerService.toIsolateName);
 
@@ -100,13 +101,28 @@ Future<void> hottieInner() async {
     await Future.delayed(const Duration(milliseconds: 500));
   }
 
+  final finder = await ScriptChangeObserver.connect();
+
+  Future<TestGroupResults> onRunTests(RunTestsIsolateMessage message) async {
+    final libs = await finder.checkLibraries();
+
+    if (libs.isEmpty) {
+      logHottie('skipping tests');
+      return TestGroupResultsExtension.emptyResults();
+    }
+    logHottie(libs);
+
+    final output = await runTests(message.call);
+    return output;
+  }
+
   await toIsolate.forEach((event) async {
     try {
       final message = _codec.decodeMessage(event as ByteData)! as IsolateMessage;
 
       switch (message) {
         case RunTestsIsolateMessage():
-          final output = await runTests(message.call);
+          final output = await onRunTests(message);
           final fromIsolate = IsolateNameServer.lookupPortByName(IsolatedRunnerService.fromIsolateName);
           assert(fromIsolate != null);
           fromIsolate!.send(_codec.encodeMessage(output));

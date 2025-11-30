@@ -14,20 +14,17 @@ PlatformException _createConnectionError(String channelName) {
     message: 'Unable to establish connection on channel: "$channelName".',
   );
 }
+
 bool _deepEquals(Object? a, Object? b) {
   if (a is List && b is List) {
-    return a.length == b.length &&
-        a.indexed
-        .every(((int, dynamic) item) => _deepEquals(item.$2, b[item.$1]));
+    return a.length == b.length && a.indexed.every(((int, dynamic) item) => _deepEquals(item.$2, b[item.$1]));
   }
   if (a is Map && b is Map) {
-    return a.length == b.length && a.entries.every((MapEntry<Object?, Object?> entry) =>
-        (b as Map<Object?, Object?>).containsKey(entry.key) &&
-        _deepEquals(entry.value, b[entry.key]));
+    return a.length == b.length &&
+        a.entries.every((MapEntry<Object?, Object?> entry) => (b as Map<Object?, Object?>).containsKey(entry.key) && _deepEquals(entry.value, b[entry.key]));
   }
   return a == b;
 }
-
 
 class TestResult {
   TestResult({
@@ -47,7 +44,8 @@ class TestResult {
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static TestResult decode(Object result) {
     result as List<Object?>;
@@ -71,8 +69,7 @@ class TestResult {
 
   @override
   // ignore: avoid_equals_and_hash_code_on_mutable_classes
-  int get hashCode => Object.hashAll(_toList())
-;
+  int get hashCode => Object.hashAll(_toList());
 }
 
 class TestResultError {
@@ -89,7 +86,8 @@ class TestResultError {
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static TestResultError decode(Object result) {
     result as List<Object?>;
@@ -112,8 +110,7 @@ class TestResultError {
 
   @override
   // ignore: avoid_equals_and_hash_code_on_mutable_classes
-  int get hashCode => Object.hashAll(_toList())
-;
+  int get hashCode => Object.hashAll(_toList());
 }
 
 class TestGroupResults {
@@ -138,7 +135,8 @@ class TestGroupResults {
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static TestGroupResults decode(Object result) {
     result as List<Object?>;
@@ -163,12 +161,10 @@ class TestGroupResults {
 
   @override
   // ignore: avoid_equals_and_hash_code_on_mutable_classes
-  int get hashCode => Object.hashAll(_toList())
-;
+  int get hashCode => Object.hashAll(_toList());
 }
 
-sealed class IsolateMessage {
-}
+sealed class IsolateMessage {}
 
 class RunTestsIsolateMessage extends IsolateMessage {
   RunTestsIsolateMessage({
@@ -184,7 +180,8 @@ class RunTestsIsolateMessage extends IsolateMessage {
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static RunTestsIsolateMessage decode(Object result) {
     result as List<Object?>;
@@ -207,8 +204,7 @@ class RunTestsIsolateMessage extends IsolateMessage {
 
   @override
   // ignore: avoid_equals_and_hash_code_on_mutable_classes
-  int get hashCode => Object.hashAll(_toList())
-;
+  int get hashCode => Object.hashAll(_toList());
 }
 
 class SetCurrentDirectoryIsolateMessage extends IsolateMessage {
@@ -225,7 +221,8 @@ class SetCurrentDirectoryIsolateMessage extends IsolateMessage {
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static SetCurrentDirectoryIsolateMessage decode(Object result) {
     result as List<Object?>;
@@ -248,10 +245,8 @@ class SetCurrentDirectoryIsolateMessage extends IsolateMessage {
 
   @override
   // ignore: avoid_equals_and_hash_code_on_mutable_classes
-  int get hashCode => Object.hashAll(_toList())
-;
+  int get hashCode => Object.hashAll(_toList());
 }
-
 
 class _PigeonCodec extends StandardMessageCodec {
   const _PigeonCodec();
@@ -260,19 +255,19 @@ class _PigeonCodec extends StandardMessageCodec {
     if (value is int) {
       buffer.putUint8(4);
       buffer.putInt64(value);
-    }    else if (value is TestResult) {
+    } else if (value is TestResult) {
       buffer.putUint8(129);
       writeValue(buffer, value.encode());
-    }    else if (value is TestResultError) {
+    } else if (value is TestResultError) {
       buffer.putUint8(130);
       writeValue(buffer, value.encode());
-    }    else if (value is TestGroupResults) {
+    } else if (value is TestGroupResults) {
       buffer.putUint8(131);
       writeValue(buffer, value.encode());
-    }    else if (value is RunTestsIsolateMessage) {
+    } else if (value is RunTestsIsolateMessage) {
       buffer.putUint8(132);
       writeValue(buffer, value.encode());
-    }    else if (value is SetCurrentDirectoryIsolateMessage) {
+    } else if (value is SetCurrentDirectoryIsolateMessage) {
       buffer.putUint8(133);
       writeValue(buffer, value.encode());
     } else {
@@ -283,15 +278,15 @@ class _PigeonCodec extends StandardMessageCodec {
   @override
   Object? readValueOfType(int type, ReadBuffer buffer) {
     switch (type) {
-      case 129: 
+      case 129:
         return TestResult.decode(readValue(buffer)!);
-      case 130: 
+      case 130:
         return TestResultError.decode(readValue(buffer)!);
-      case 131: 
+      case 131:
         return TestGroupResults.decode(readValue(buffer)!);
-      case 132: 
+      case 132:
         return RunTestsIsolateMessage.decode(readValue(buffer)!);
-      case 133: 
+      case 133:
         return SetCurrentDirectoryIsolateMessage.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -320,8 +315,7 @@ class IsolateStarted {
       binaryMessenger: pigeonVar_binaryMessenger,
     );
     final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[rawHandle]);
-    final List<Object?>? pigeonVar_replyList =
-        await pigeonVar_sendFuture as List<Object?>?;
+    final List<Object?>? pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
     if (pigeonVar_replyList == null) {
       throw _createConnectionError(pigeonVar_channelName);
     } else if (pigeonVar_replyList.length > 1) {

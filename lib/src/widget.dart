@@ -1,7 +1,6 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:hottie/src/dependency_finder.dart';
 import 'package:hottie/src/isolated_runner.dart';
 import 'package:hottie/src/logger.dart';
 import 'package:hottie/src/model.g.dart';
@@ -27,7 +26,7 @@ class _TestRunnerState extends State<TestRunner> {
   final service = IsolatedRunnerService();
   bool showsOverlay = true;
 
-  TestGroupResults results = TestGroupResults(skipped: 0, failed: [], passed: []);
+  TestGroupResults results = TestGroupResultsExtension.emptyResults();
 
   @override
   void initState() {
@@ -42,8 +41,6 @@ class _TestRunnerState extends State<TestRunner> {
   }
 
   Future<void> retest() async {
-    await printLibraries();
-
     final results = await service.execute(widget.main);
     if (!mounted) {
       return;
@@ -206,6 +203,8 @@ class TestIndicator extends StatelessWidget {
   }
 }
 
-extension on TestGroupResults {
+extension TestGroupResultsExtension on TestGroupResults {
   bool get ok => failed.isEmpty;
+
+  static TestGroupResults emptyResults() => TestGroupResults(failed: [], skipped: 0, passed: []);
 }

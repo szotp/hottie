@@ -9,19 +9,19 @@ import 'package:hottie/src/logger.dart';
 import 'package:vm_service/vm_service.dart';
 import 'package:vm_service/vm_service_io.dart';
 
-Future<ScriptChangeObserver> printLibraries() async {
-  final finder = await DependencyFinder.connect();
-  final observer = ScriptChangeObserver(finder);
-  await observer.checkLibraries();
-  return observer;
-}
-
 class ScriptChangeObserver {
   final DependencyFinder _finder;
 
   Map<String, String>? _previousState; // map from script uri to script hash
 
   ScriptChangeObserver(this._finder);
+
+  static Future<ScriptChangeObserver> connect() async {
+    final finder = await DependencyFinder.connect();
+    final observer = ScriptChangeObserver(finder);
+    await observer.checkLibraries();
+    return observer;
+  }
 
   Future<List<Uri>> checkLibraries() async {
     final sw = Stopwatch();
