@@ -14,7 +14,8 @@ public class HottiePlugin: NSObject, FlutterPlugin, SpawnHostApi {
     var engine: FlutterEngine?
     
     func spawn(entryPoint: String, args: [String]) throws {
-        // engine = nil
+        engine?.destroyContext()
+        engine = nil
         
         let options = FlutterEngineGroupOptions()
         options.entrypoint = entryPoint

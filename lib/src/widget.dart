@@ -22,22 +22,9 @@ class TestRunner extends StatefulWidget {
 }
 
 class _TestRunnerState extends State<TestRunner> {
-  late final _controller = TestingController(widget.main);
+  // ignore: unused_field
+  final _controller = TestingController();
   bool showsOverlay = true;
-
-  TestGroupResults results = TestGroupResultsExtension.emptyResults();
-
-  // @override
-  // void initState() {
-  //   super.initState();
-  //   retest();
-  // }
-
-  @override
-  void reassemble() {
-    super.reassemble();
-    Future.delayed(const Duration(milliseconds: 10)).then((_) => _controller.retest());
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,29 +40,33 @@ class _TestRunnerState extends State<TestRunner> {
           data: MediaQueryData.fromView(View.of(context)),
           child: Directionality(
             textDirection: TextDirection.ltr,
-            child: Stack(
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      showsOverlay = true;
-                    });
-                  },
-                  child: TestIndicator(results: results),
-                ),
-                if (!results.ok && showsOverlay)
-                  Positioned.fill(
-                    child: TestResultsView(
-                      results: results,
-                      onClose: () {
-                        setState(() {
-                          showsOverlay = false;
-                        });
-                      },
-                    ),
-                  )
-              ],
-            ),
+            child: ValueListenableBuilder(
+                valueListenable: _controller,
+                builder: (context, results, _) {
+                  return Stack(
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            showsOverlay = true;
+                          });
+                        },
+                        child: TestIndicator(results: results),
+                      ),
+                      if (!results.ok && showsOverlay)
+                        Positioned.fill(
+                          child: TestResultsView(
+                            results: results,
+                            onClose: () {
+                              setState(() {
+                                showsOverlay = false;
+                              });
+                            },
+                          ),
+                        )
+                    ],
+                  );
+                }),
           ),
         ),
       ],

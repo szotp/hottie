@@ -28,17 +28,22 @@ import 'package:test_api/src/backend/suite_platform.dart'; // ignore: implementa
 import 'package:test_api/src/backend/test.dart'; // ignore: implementation_imports
 
 Future<Reporter> declareAndRunTests(void Function() tests) async {
+  final sw = Stopwatch()..start();
   final reporter = Reporter(); // disable color when run directly.
   // ignore: no_leading_underscores_for_local_identifiers
   final _declarer = Declarer();
   _declarer.declare(tests);
-
+  print('runTests X ${sw.elapsedMilliseconds}ms');
   await Invoker.guard<Future<void>>(() async {
+    print('runTests ${sw.elapsedMilliseconds}ms');
     // ignore: recursive_getters, this self-call is safe since it will just fetch the declarer instance
     final Group group = _declarer.build();
     final suite = Suite(group, SuitePlatform(Runtime.vm));
+    print('runTests rg ${sw.elapsedMilliseconds}ms');
     await _runGroup(suite, group, <Group>[], reporter);
+    print('runTests xx ${sw.elapsedMilliseconds}ms');
     reporter._onDone();
+    print('runTests ${sw.elapsedMilliseconds}ms');
   });
 
   return reporter;

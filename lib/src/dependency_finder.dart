@@ -5,7 +5,6 @@ import 'dart:convert';
 import 'dart:developer';
 import 'dart:isolate' as iso;
 
-import 'package:hottie/src/logger.dart';
 import 'package:vm_service/vm_service.dart';
 import 'package:vm_service/vm_service_io.dart';
 
@@ -16,14 +15,27 @@ class ScriptChangeObserver {
     checkLibraries();
   }
 
+  final finderFuture = DependencyFinder.connect();
+  DependencyFinder? _finder;
+
+  Future<void> connect() => finderFuture;
+
+  Future<void> waitForReload() async {
+    final finder = await finderFuture;
+    _finder = finder;
+    await checkLibraries();
+
+    finder._vm.streamListen('Isolate');
+    await finder._vm.onIsolateEvent.firstWhere((x) => x.kind == 'IsolateReload');
+    finder._vm.streamCancel('Isolate');
+  }
+
   Future<List<Uri>> checkLibraries() async {
     final sw = Stopwatch();
     sw.start();
-    final finder = await DependencyFinder.connect();
 
     final previous = _previousState;
-    final scripts = await finder.findCurrentPackageScripts(onlyTests: true);
-    await finder.dispose();
+    final scripts = await (await finderFuture).findCurrentPackageScripts(onlyTests: true);
     final currentState = <String, String>{};
     final changed = <Uri>[];
 
@@ -36,9 +48,18 @@ class ScriptChangeObserver {
       }
     }
     _previousState = currentState;
-    logHottie('checkLibraries took ${sw.elapsedMilliseconds}ms');
     return changed;
   }
+
+  void dispose() => _finder?.dispose();
+}
+
+Future<VmService> vmServiceConnect() async {
+  final serviceInfo = await Service.getInfo();
+  final serverUri = serviceInfo.serverUri!;
+  final wsUri = 'ws://${serverUri.authority}${serverUri.path}ws';
+
+  return vmServiceConnectUri(wsUri);
 }
 
 class DependencyFinder {
@@ -47,9 +68,7 @@ class DependencyFinder {
     final serverUri = serviceInfo.serverUri!;
     final wsUri = 'ws://${serverUri.authority}${serverUri.path}ws';
 
-    logHottie('Connecting to vm_service...');
     final vm = await vmServiceConnectUri(wsUri);
-    logHottie('Connected.');
     return DependencyFinder(vm);
   }
 

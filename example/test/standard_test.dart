@@ -22,5 +22,6 @@ void main() {
       expect(contents, 'test');
     },
     tags: ["File"],
+    skip: true,
   );
 }

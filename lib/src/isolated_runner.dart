@@ -4,6 +4,7 @@ import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:hottie/src/declarer.dart';
+import 'package:hottie/src/dependency_finder.dart';
 import 'package:hottie/src/logger.dart';
 import 'package:hottie/src/model.g.dart';
 
@@ -22,20 +23,19 @@ class IsolatedRunnerService {
     _port.forEach(_onMessage);
   }
 
-  Future<void> execute(TestMain testMain) async {
+  Future<void> respawn() async {
     status.value = TestStatus.starting;
     await _api.spawn('hottie', ['test']);
 
     final sw = Stopwatch();
     sw.start();
-    await status.waitFor(TestStatus.running).timeout(const Duration(seconds: 1), onTimeout: () {
+    await status.waitFor((x) => x != TestStatus.starting).timeout(const Duration(seconds: 1), onTimeout: () {
       logHottie('Trying again...');
       _api.spawn('hottie', ['test']);
     });
     sw.stop();
-    logHottie(sw.elapsedMilliseconds);
 
-    await status.waitFor(TestStatus.running).timeout(const Duration(seconds: 1), onTimeout: () {
+    await status.waitFor((x) => x != TestStatus.starting).timeout(const Duration(seconds: 1), onTimeout: () {
       logHottie('Failed...');
       _api.close();
     });
@@ -47,11 +47,13 @@ class IsolatedRunnerService {
     switch (decoded) {
       case final TestStatusFromIsolate r:
         status.value = r.status;
+        logHottie(status.toString());
+
       case final TestGroupResults r:
-        assert(status.value == TestStatus.running);
-        _api.close();
-        status.value = TestStatus.finished;
         _onResults(r);
+        status.value = TestStatus.finished;
+        logHottie(status.toString());
+        respawn();
     }
   }
 }
@@ -72,29 +74,41 @@ Future<void> runInsideIsolate(List<String> args, Map<String, TestMain> tests) as
   final port = IsolateNameServer.lookupPortByName(_onResultsPort)!;
   void send(FromIsolate message) => port.send(_codec.encodeMessage(message));
 
-  logHottie('runInsideIsolate');
+  send(TestStatusFromIsolate(status: TestStatus.waiting));
+
+  final observer = ScriptChangeObserver();
+  await observer.connect();
+
+  await observer.waitForReload();
+  logHottie('Hot reload detected!');
+  await Future.delayed(const Duration(milliseconds: 100));
+  final sw = Stopwatch()..start();
+  final files = await observer.checkLibraries();
+  observer.dispose();
+  logHottie('runInsideIsolate ${files.length} ${sw.elapsedMilliseconds}ms');
   send(TestStatusFromIsolate(status: TestStatus.running));
-  logHottie('runInsideIsolate sent');
 
   final results = await runTests(() {
-    for (final x in tests.values) {
-      x();
+    for (final testFunc in tests.values) {
+      testFunc();
     }
   });
 
+  logHottie('runInsideIsolate X ${sw.elapsedMilliseconds}ms');
   send(results);
+  Isolate.exit();
 }
 
 extension ValueNotifierExtension<T> on ValueNotifier<T> {
-  Future<void> waitFor(T value) async {
-    if (this.value == value) {
+  Future<void> waitFor(bool Function(T) isReady) async {
+    if (isReady(value)) {
       return;
     }
 
     final completer = Completer();
 
     void handler() {
-      if (this.value == value) {
+      if (isReady(value)) {
         removeListener(handler);
         completer.complete();
       }
