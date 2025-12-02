@@ -1,6 +1,3 @@
-// ignore_for_file: unused_import // for test_core
-
-import 'dart:convert';
 import 'dart:isolate';
 import 'dart:ui';
 
@@ -8,7 +5,7 @@ import 'package:hottie/src/ffi.dart';
 import 'package:hottie/src/run_tests.dart';
 import 'package:hottie/src/script_change.dart';
 import 'package:hottie/src/utils/logger.dart';
-import 'package:hottie/src/watcher.dart';
+import 'package:stack_trace/stack_trace.dart';
 
 const _onResultsPortName = 'HottieFrontend.onResults';
 
@@ -17,37 +14,37 @@ const _onResultsPortName = 'HottieFrontend.onResults';
 // flutter run test/runner.dart -d flutter-tester
 HottieFrontend runHottie() => HottieFrontend();
 
-Future<void> runHottieIsolate(Map<RelativePath, TestMain> testFuncs) async {
-  final testPaths = (jsonDecode(PlatformDispatcher.instance.defaultRouteName) as List).cast<RelativePath>().toSet();
-  final matches = testFuncs.entries.where((e) => testPaths.contains(e.key)).toList();
+Future<void> runHottieIsolate(TestMains testFuncs) async {
+  final testPaths = RelativePaths.decode(PlatformDispatcher.instance.defaultRouteName);
+  final matches = testFuncs.entries.where((e) => testPaths.paths.contains(e.key)).toList();
   final keys = matches.map((x) => x.key).join(', ');
 
   logger('runHottieIsolate: $keys');
 
-  void testMain() {
-    for (final entry in matches) {
-      entry.value();
-    }
+  final results = <TestGroupResults>[];
+
+  for (final entry in matches) {
+    results.add(await runTests(entry).timeout(const Duration(seconds: 1)));
   }
 
-  final success = await runTests(testMain);
-
   final port = IsolateNameServer.lookupPortByName(_onResultsPortName);
-  port?.send(success);
+  port!.send(results);
 }
 
 typedef TestMain = void Function();
+typedef TestMains = Map<RelativePath, TestMain>;
 
 class HottieFrontend {
   HottieFrontend() {
     IsolateNameServer.removePortNameMapping(_onResultsPortName);
     IsolateNameServer.registerPortWithName(_port.sendPort, _onResultsPortName);
-    _port.forEach(_onResults).ignoreWithLogging();
+    _port.cast<List<TestGroupResults>>().forEach(_onResults).ignoreWithLogging();
     _observer.observe().forEach(onReassemble).ignoreWithLogging();
-    onReassemble([]).ignoreWithLogging();
+    onReassemble(RelativePaths({})).ignoreWithLogging();
   }
   final _observer = ScriptChangeChecker();
   final _port = ReceivePort();
+  Set<String> _previouslyFailed = {};
 
   void dispose() {
     _observer.dispose();
@@ -55,17 +52,40 @@ class HottieFrontend {
     IsolateNameServer.removePortNameMapping(_onResultsPortName);
   }
 
-  Future<void> onReassemble(List<String> libs) async {
-    libs.add('file_1_test.dart');
-    if (libs.isEmpty) {
+  Future<void> onReassemble(RelativePaths libs) async {
+    libs.paths.add('file_1_test.dart');
+    libs.paths.addAll(_previouslyFailed);
+    if (libs.paths.isEmpty) {
       return;
     }
 
-    final string = jsonEncode(libs);
-    spawn('hottie', string);
+    spawn('hottie', libs.encode());
   }
 
-  void _onResults(dynamic value) {
-    logger('_onResults $value');
+  void _onResults(List<TestGroupResults> value) {
+    _previouslyFailed = value.where((x) => !x.isSuccess).map((x) => x.path).toSet();
+
+    var passed = 0;
+    var skipped = 0;
+
+    for (final testFile in value) {
+      passed += testFile.passed.length;
+      skipped += testFile.skipped;
+      for (final failedTest in testFile.failed) {
+        for (final error in failedTest.errors) {
+          final frame = Trace.from(error.stackTrace).frames.where((x) => x.uri.toString().contains(testFile.path)).firstOrNull;
+
+          if (frame != null) {
+            logger('🔴 ${failedTest.name} in ${frame.location}');
+          }
+
+          logger(error.error.toString());
+        }
+        return;
+      }
+    }
+
+    final skippedString = skipped > 0 ? '($skipped skipped)' : '';
+    logger('✅ $passed $skippedString');
   }
 }

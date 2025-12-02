@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:developer';
 import 'dart:isolate' as iso;
 
@@ -16,6 +17,15 @@ Future<VmService> _vmServiceConnect() async {
 
 typedef RelativePath = String;
 
+extension type RelativePaths(Set<RelativePath> paths) {
+  factory RelativePaths.decode(String route) {
+    final testPaths = (jsonDecode(route) as List).cast<RelativePath>().toSet();
+    return RelativePaths(testPaths);
+  }
+
+  String encode() => jsonEncode(paths.toList());
+}
+
 class ScriptChangeChecker {
   ScriptChangeChecker() {
     _vm.then((value) {
@@ -29,20 +39,19 @@ class ScriptChangeChecker {
   final String _isolateId = Service.getIsolateId(iso.Isolate.current)!;
 
   /// script.relativePath -> script.id
-  Map<RelativePath, String>?
-      _previousState; // map from script uri to script hash
+  Map<RelativePath, String>? _previousState; // map from script uri to script hash
 
   final Future<VmService> _vm = _vmServiceConnect();
   VmService? _disposable;
 
-  Future<List<RelativePath>> checkLibraries() async {
+  Future<RelativePaths> checkLibraries() async {
     final sw = Stopwatch();
     sw.start();
 
     final previous = _previousState;
     final scripts = await _findTestScripts();
     final currentState = <RelativePath, String>{};
-    final changed = <String>[];
+    final changed = <String>{};
 
     for (final script in scripts) {
       final key = script.relativePath;
@@ -53,17 +62,15 @@ class ScriptChangeChecker {
       }
     }
     _previousState = currentState;
-    return changed;
+    return RelativePaths(changed);
   }
 
   void dispose() => _disposable?.dispose();
 
-  Stream<List<RelativePath>> observe() async* {
+  Stream<RelativePaths> observe() async* {
     final vm = await _vm;
     vm.streamListen('Isolate').ignoreWithLogging();
-    yield* vm.onIsolateEvent
-        .where((event) => event.kind == 'IsolateReload')
-        .asyncMap((_) => checkLibraries());
+    yield* vm.onIsolateEvent.where((event) => event.kind == 'IsolateReload').asyncMap((_) => checkLibraries());
   }
 
   Future<List<ScriptRef>> _findTestScripts() async {

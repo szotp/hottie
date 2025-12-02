@@ -28,7 +28,7 @@ void main() {
 
     test('async', () async {
       await Future<void>.delayed(const Duration(milliseconds: 1));
-      expect(1, 1);
+      expect(1, 2);
     });
 
     test(
@@ -39,11 +39,5 @@ void main() {
       },
       skip: true,
     );
-
-    test('async printing', () async {
-      await Future<void>.delayed(const Duration(milliseconds: 1));
-      // ignore: avoid_print just for testing
-      print('printing a line');
-    });
   });
 }

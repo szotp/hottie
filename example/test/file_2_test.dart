@@ -8,11 +8,11 @@ void main() {
     });
 
     test('simple 2', () async {
-      expect(1, 1);
+      expect(1, 5);
     });
 
     test('simple 3', () async {
-      expect(1, 1);
+      expect(1, 2);
     });
 
     test('simple 4', () async {

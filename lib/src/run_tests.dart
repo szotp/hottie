@@ -1,73 +1,84 @@
 // ignore_for_file: implementation_imports because
 
 import 'dart:async';
-import 'dart:io';
 
-import 'package:hottie/src/utils/logger.dart';
+import 'package:hottie/src/runner.dart';
+import 'package:hottie/src/script_change.dart';
+import 'package:test_api/src/backend/live_test.dart';
 import 'package:test_core/src/direct_run.dart';
-import 'package:test_core/src/runner/reporter/json.dart';
+import 'package:test_core/src/runner/engine.dart';
+import 'package:test_core/src/runner/reporter.dart';
 
-const _direct = false;
+Future<TestGroupResults> runTests(MapEntry<String, TestMain> test) async {
+  final reporter = _Reporter();
 
-Future<bool> runTests(void Function() testMain) async {
-  final sw = Stopwatch()..start();
-  final bool result;
+  await directRunTests(
+    test.value,
+    reporterFactory: reporter.watch,
+  );
 
-  if (_direct) {
-    result = await _runTestsDirect(testMain);
-  } else {
-    result = await _runTestsDefault(testMain);
+  return reporter.toResults(test.key);
+}
+
+class _Reporter extends Reporter {
+  late final bool result;
+  late final Engine engine;
+
+  _Reporter watch(Engine engine) {
+    this.engine = engine;
+    return this; // ignore: avoid_returning_this for tear-off
   }
 
-  logger('runTests ${sw.elapsedMilliseconds}ms');
-  return result;
-}
+  @override
+  void pause() {
+    throw UnimplementedError();
+  }
 
-Future<bool> _runTestsDefault(void Function() testMain) async {
-  final completer = Completer<bool>();
+  @override
+  void resume() {
+    throw UnimplementedError();
+  }
 
-  runZoned(
-    testMain,
-    zoneSpecification: ZoneSpecification(
-      print: (self, parent, zone, line) {
-        final split = line.split(':');
-        // parent.print(zone, line);
-        switch (split.last.trim()) {
-          case 'All tests passed!':
-            completer.complete(true);
-          case 'All tests skipped.':
-            completer.complete(true);
-          case 'Some tests failed.':
-            completer.complete(false);
-        }
-      },
-    ),
-  );
+  TestGroupResults toResults(String path) {
+    return TestGroupResults(
+      path: path,
+      skipped: engine.skipped.length,
+      failed: engine.failed.map(_toTestResult).toList(),
+      passed: engine.passed.map(_toTestResult).toList(),
+    );
+  }
 
-  await completer.future;
-  return true;
-}
-
-Future<bool> _runTestsDirect(void Function() testMain) async {
-  return directRunTests(
-    testMain,
-    reporterFactory: (engine) =>
-        JsonReporter.watch(engine, stdout, isDebugRun: true),
-  );
+  TestResult _toTestResult(LiveTest test) {
+    return TestResult(name: test.individualName, errors: test.errors);
+  }
 }
 
 class TestGroupResults {
   TestGroupResults({
+    required this.path,
     required this.skipped,
     required this.failed,
     required this.passed,
   });
+
+  final RelativePath path;
 
   int skipped;
 
   List<TestResult> failed;
 
   List<TestResult> passed;
+
+  bool get isSuccess => failed.isEmpty;
+
+  @override
+  String toString() {
+    final skippedString = skipped == 0 ? '' : ' ($skipped skipped)';
+    final emoji = isSuccess ? '✅' : '🔴';
+    final line = '$path: $emoji ${passed.length}/${passed.length + failed.length}$skippedString';
+
+    return line;
+  }
 }
 
 class TestResult {
@@ -78,13 +89,5 @@ class TestResult {
 
   String name;
 
-  List<TestResultError> errors;
-}
-
-class TestResultError {
-  TestResultError({
-    required this.message,
-  });
-
-  String message;
+  List<AsyncError> errors;
 }
