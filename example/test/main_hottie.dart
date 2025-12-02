@@ -1,22 +1,20 @@
-import 'package:example/main.dart' as m;
-import 'package:flutter/widgets.dart';
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hottie/hottie.dart';
 
-import 'standard_test.dart' as t1;
-import 'widgets_test.dart' as t2;
+import 'file_1_test.dart' as f1;
+import 'file_2_test.dart' as f2;
 
+// in VSCode, pressing F5 should run this
+// can be run from terminal, but won't reload automatically
+// flutter run test/runner.dart -d flutter-tester
 Future<void> main() async {
-  runApp(
-    TestRunner(main: testAll, child: m.MyApp()),
-  );
+  runHottie();
 }
 
 @pragma('vm:entry-point')
-void hottie() => hottieInner();
-
-@pragma('vm:entry-point')
-void testAll() {
-  t1.main();
-  t2.main();
-}
+void hottie() => runHottieIsolate({
+      'file_1_test.dart': f1.main,
+      'file_2_test.dart': f2.main,
+    });

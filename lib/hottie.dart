@@ -1,2 +1,1 @@
-export 'src/native.dart' show hottieInner;
-export 'src/widget.dart' show TestRunner;
+export 'package:hottie/src/runner.dart' show runHottie, runHottieIsolate;

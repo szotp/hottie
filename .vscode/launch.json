@@ -5,26 +5,11 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Hottie",
-            "program": "example/test/main_hottie.dart",
-            "request": "launch",
-            "type": "dart"
-        },
-        {
-            "name": "Hottie failing",
-            "program": "example/test/main_hottie.dart",
+            "name": "runner",
             "request": "launch",
             "type": "dart",
-            "args": [
-                "--dart-define",
-                "shouldFail=true",
-            ],
-        },
-        {
-            "name": "main",
-            "program": "example/lib/main.dart",
-            "request": "launch",
-            "type": "dart"
+            "program": "example/test/main_hottie.dart",
+            "deviceId": "flutter-tester"
         }
     ]
 }
