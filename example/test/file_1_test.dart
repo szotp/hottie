@@ -27,14 +27,14 @@ void main() {
     );
 
     test('async', () async {
-      await Future<void>.delayed(const Duration(milliseconds: 1));
-      expect(1, 2);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(1, 1);
     });
 
     test(
       'async failing',
       () async {
-        await Future<void>.delayed(const Duration(milliseconds: 1));
+        await Future<void>.delayed(const Duration(milliseconds: 10));
         throw TestFailure('fail!');
       },
       skip: true,

@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 void logger(Object message) {
   final d = DateTime.now();
   final hh = d.hour.toString().padLeft(2, '0');
@@ -9,7 +7,7 @@ void logger(Object message) {
 
   final string = '$hh:$mm:$ss:$mse';
 
-  log(message.toString(), name: string);
+  print('[$string] $message'); // ignore: avoid_print hottie does not work in release mode anyway
 }
 
 extension FutureExtension<T> on Future<T> {

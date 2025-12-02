@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:isolate';
 import 'dart:ui';
 
@@ -5,6 +6,7 @@ import 'package:hottie/src/ffi.dart';
 import 'package:hottie/src/run_tests.dart';
 import 'package:hottie/src/script_change.dart';
 import 'package:hottie/src/utils/logger.dart';
+import 'package:hottie/src/watcher.dart';
 import 'package:stack_trace/stack_trace.dart';
 
 const _onResultsPortName = 'HottieFrontend.onResults';
@@ -17,9 +19,6 @@ HottieFrontend runHottie() => HottieFrontend();
 Future<void> runHottieIsolate(TestMains testFuncs) async {
   final testPaths = RelativePaths.decode(PlatformDispatcher.instance.defaultRouteName);
   final matches = testFuncs.entries.where((e) => testPaths.paths.contains(e.key)).toList();
-  final keys = matches.map((x) => x.key).join(', ');
-
-  logger('runHottieIsolate: $keys');
 
   final results = <TestGroupResults>[];
 
@@ -41,7 +40,10 @@ class HottieFrontend {
     _port.cast<List<TestGroupResults>>().forEach(_onResults).ignoreWithLogging();
     _observer.observe().forEach(onReassemble).ignoreWithLogging();
     onReassemble(RelativePaths({})).ignoreWithLogging();
+    _reloader = watchDartFiles().asyncMap(_onFilesChanged).listen(null);
   }
+
+  late final StreamSubscription<void> _reloader;
   final _observer = ScriptChangeChecker();
   final _port = ReceivePort();
   Set<String> _previouslyFailed = {};
@@ -50,6 +52,12 @@ class HottieFrontend {
     _observer.dispose();
     _port.close();
     IsolateNameServer.removePortNameMapping(_onResultsPortName);
+    _reloader.cancel().ignoreWithLogging();
+  }
+
+  Future<void> _onFilesChanged(String filename) {
+    logger('_onFilesChanged: $filename');
+    return _observer.performHotReload();
   }
 
   Future<void> onReassemble(RelativePaths libs) async {
