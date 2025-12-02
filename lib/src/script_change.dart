@@ -77,14 +77,6 @@ class ScriptChangeChecker {
     final scripts = await (await _vm).getScripts(_isolateId);
     return scripts.scripts!.where((x) => x.isTest).toList();
   }
-
-  Future<bool> performHotReload() async {
-    final result = await (await _vm).reloadSources(_isolateId, force: true);
-    if (result.success != true) {
-      logger('Hot reload failed: ${result.json}');
-    }
-    return result.success ?? false;
-  }
 }
 
 extension on ScriptRef {
