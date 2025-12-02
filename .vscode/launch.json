@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "runner",
+            "name": "example",
             "request": "launch",
             "type": "dart",
             "program": "example/test/main_hottie.dart",

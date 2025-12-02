@@ -18,15 +18,11 @@ const _onResultsPortName = 'HottieFrontend.onResults';
 HottieFrontend runHottie() => HottieFrontend();
 
 Future<void> runHottieIsolate(Map<RelativePath, TestMain> testFuncs) async {
-  final testPaths =
-      (jsonDecode(PlatformDispatcher.instance.defaultRouteName) as List)
-          .cast<RelativePath>()
-          .toSet();
-  final matches =
-      testFuncs.entries.where((e) => testPaths.contains(e.key)).toList();
+  final testPaths = (jsonDecode(PlatformDispatcher.instance.defaultRouteName) as List).cast<RelativePath>().toSet();
+  final matches = testFuncs.entries.where((e) => testPaths.contains(e.key)).toList();
   final keys = matches.map((x) => x.key).join(', ');
 
-  logger('directRunTests: $keys');
+  logger('runHottieIsolate: $keys');
 
   void testMain() {
     for (final entry in matches) {
