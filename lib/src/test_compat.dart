@@ -17,6 +17,7 @@ library;
 
 import 'dart:async';
 
+import 'package:hottie/src/logger.dart';
 import 'package:test_api/src/backend/declarer.dart'; // ignore: implementation_imports
 import 'package:test_api/src/backend/group.dart'; // ignore: implementation_imports
 import 'package:test_api/src/backend/group_entry.dart'; // ignore: implementation_imports
@@ -33,17 +34,17 @@ Future<Reporter> declareAndRunTests(void Function() tests) async {
   // ignore: no_leading_underscores_for_local_identifiers
   final _declarer = Declarer();
   _declarer.declare(tests);
-  print('runTests X ${sw.elapsedMilliseconds}ms');
+  logHottie('runTests X ${sw.elapsedMilliseconds}ms');
   await Invoker.guard<Future<void>>(() async {
-    print('runTests ${sw.elapsedMilliseconds}ms');
+    logHottie('runTests ${sw.elapsedMilliseconds}ms');
     // ignore: recursive_getters, this self-call is safe since it will just fetch the declarer instance
     final Group group = _declarer.build();
     final suite = Suite(group, SuitePlatform(Runtime.vm));
-    print('runTests rg ${sw.elapsedMilliseconds}ms');
+    logHottie('runTests rg ${sw.elapsedMilliseconds}ms');
     await _runGroup(suite, group, <Group>[], reporter);
-    print('runTests xx ${sw.elapsedMilliseconds}ms');
+    logHottie('runTests xx ${sw.elapsedMilliseconds}ms');
     reporter._onDone();
-    print('runTests ${sw.elapsedMilliseconds}ms');
+    logHottie('runTests ${sw.elapsedMilliseconds}ms');
   });
 
   return reporter;

@@ -269,7 +269,7 @@ private class MessagesPigeonCodecReader: FlutterStandardReader {
     case 131:
       return TestResultError.fromList(self.readValue() as! [Any?])
     case 132:
-      return TestGroupResults.fromList(self.readValue() as! [Any?])
+      return s.fromList(self.readValue() as! [Any?])
     case 133:
       return TestStatusFromIsolate.fromList(self.readValue() as! [Any?])
     default:

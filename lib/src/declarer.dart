@@ -22,12 +22,12 @@ Future<TestGroupResults> runTestsFromRawCallback(int input) {
 Future<TestGroupResults> runTests(TestMain input) async {
   final sw = Stopwatch()..start();
   final binding = AutomatedTestWidgetsFlutterBinding.ensureInitialized();
-  print('runTests ${sw.elapsedMilliseconds}ms');
+  logHottie('runTests ${sw.elapsedMilliseconds}ms');
   binding.platformDispatcher.implicitView?.physicalSize = const Size(800, 600); // for error when widget testing
-  print('runTests ${sw.elapsedMilliseconds}ms');
+  logHottie('runTests ${sw.elapsedMilliseconds}ms');
 
   final reporter = await declareAndRunTests(input);
-  print('runTests ${sw.elapsedMilliseconds}ms');
+  logHottie('runTests ${sw.elapsedMilliseconds}ms');
 
   return TestGroupResults(
     skipped: reporter.skipped.length,

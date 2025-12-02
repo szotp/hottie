@@ -17,23 +17,30 @@ class IsolatedRunnerService {
   final _port = ReceivePort();
 
   final status = ValueNotifier(TestStatus.starting);
+  final _stopwatch = Stopwatch();
 
   IsolatedRunnerService(this._onResults) {
     _registerPort(_port.sendPort, _onResultsPort);
     _port.forEach(_onMessage);
+
+    status.addListener(() {
+      if (status.value == TestStatus.starting) {
+        _stopwatch.reset();
+        _stopwatch.start();
+      }
+
+      logHottie('${status.value} ${_stopwatch.elapsedMilliseconds}ms');
+    });
   }
 
   Future<void> respawn() async {
     status.value = TestStatus.starting;
     await _api.spawn('hottie', ['test']);
 
-    final sw = Stopwatch();
-    sw.start();
     await status.waitFor((x) => x != TestStatus.starting).timeout(const Duration(seconds: 1), onTimeout: () {
       logHottie('Trying again...');
       _api.spawn('hottie', ['test']);
     });
-    sw.stop();
 
     await status.waitFor((x) => x != TestStatus.starting).timeout(const Duration(seconds: 1), onTimeout: () {
       logHottie('Failed...');
@@ -81,7 +88,7 @@ Future<void> runInsideIsolate(List<String> args, Map<String, TestMain> tests) as
 
   await observer.waitForReload();
   logHottie('Hot reload detected!');
-  await Future.delayed(const Duration(milliseconds: 100));
+
   final sw = Stopwatch()..start();
   final files = await observer.checkLibraries();
   observer.dispose();
