@@ -1,7 +1,10 @@
 #!/usr/bin/env dart
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+
+const _filterOutput = false;
 
 /// Watches Dart files and automatically triggers hot reload by sending 'r' to flutter run
 Future<void> main() async {
@@ -12,16 +15,28 @@ Future<void> main() async {
 }
 
 Future<Process> _startFlutter() async {
-  Directory.current = '/Users/pawel.szot/Projekty/Experiments/hottie/example';
+  final program = Platform.environment['FLUTTER_PATH'] ?? 'flutter';
+
+  final args = ['run', 'test/main_hottie.dart', '-d', 'flutter-tester', '--no-pub'];
+
   return Process.start(
-    '/Users/pawel.szot/fvm/versions/3.38.3/bin//flutter',
-    ['run', 'test/main_hottie.dart', '-d', 'flutter-tester', '--no-pub'],
+    program,
+    args,
   );
 }
 
 void _forwardOutput(Process process) {
-  process.stdout.listen(stdout.add);
+  process.stdout.transform(utf8.decoder).listen((line) {
+    if (line.startsWith('[') || !_filterOutput) {
+      stdout.write(line);
+    }
+  });
   process.stderr.listen(stderr.add);
+
+  // Forward stdin in raw mode so single keypresses work
+  stdin.echoMode = false;
+  stdin.lineMode = false;
+  stdin.listen(process.stdin.add);
 }
 
 void _watchFiles(Process process) {

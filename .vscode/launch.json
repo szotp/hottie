@@ -8,6 +8,16 @@
             "name": "example",
             "request": "launch",
             "type": "dart",
+            "program": "../bin/hottie.dart",
+            "cwd": "example",
+            "env": {
+                "FLUTTER_PATH": "../.fvm/versions/3.38.3/bin/flutter"
+            }
+        },
+        {
+            "name": "example (directly)",
+            "request": "launch",
+            "type": "dart",
             // or flutter run example/test/main_hottie.dart -d flutter-tester
             "program": "example/test/main_hottie.dart",
             "deviceId": "flutter-tester"
