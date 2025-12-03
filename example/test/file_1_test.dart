@@ -5,7 +5,7 @@ void main() {
   group('group 1', () {
     test('empty', () {});
     test('simplest', () {
-      expect(1, 10);
+      expect(1, 1);
     });
 
     testWidgets('testWidgets', (tester) async {
@@ -28,7 +28,7 @@ void main() {
 
     test('async', () async {
       await Future<void>.delayed(const Duration(milliseconds: 1111));
-      expect(1, 5);
+      expect(1, 1);
     });
 
     test(

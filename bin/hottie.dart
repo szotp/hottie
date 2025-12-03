@@ -4,13 +4,14 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:hottie/src/utils/logger.dart';
+
 const _filterOutput = false;
 
 /// Watches Dart files and automatically triggers hot reload by sending 'r' to flutter run
 Future<void> main() async {
   final process = await _startFlutter();
   _forwardOutput(process);
-  _watchFiles(process);
   exit(await process.exitCode);
 }
 
@@ -27,6 +28,12 @@ Future<Process> _startFlutter() async {
 
 void _forwardOutput(Process process) {
   process.stdout.transform(utf8.decoder).listen((line) {
+    // Check if Flutter app is requesting a reload
+    if (line.contains(hottieReloadSpell)) {
+      process.stdin.write('r');
+      return;
+    }
+
     if (line.startsWith('[') || !_filterOutput) {
       stdout.write(line);
     }
@@ -37,25 +44,4 @@ void _forwardOutput(Process process) {
   stdin.echoMode = false;
   stdin.lineMode = false;
   stdin.listen(process.stdin.add);
-}
-
-void _watchFiles(Process process) {
-  Timer? debounceTimer;
-
-  void onFileChange(FileSystemEvent event) {
-    if (event.type != FileSystemEvent.modify || !event.path.endsWith('.dart')) {
-      return;
-    }
-
-    debounceTimer?.cancel();
-    debounceTimer = Timer(const Duration(milliseconds: 500), () {
-      process.stdin.write('r');
-    });
-  }
-
-  for (final dir in [Directory('lib'), Directory('test')]) {
-    if (dir.existsSync()) {
-      dir.watch(recursive: true).listen(onFileChange);
-    }
-  }
 }

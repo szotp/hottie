@@ -61,6 +61,22 @@ class TestGroupResults {
     required this.passed,
   });
 
+  factory TestGroupResults.timeout(String path, TimeoutException error, StackTrace stackTrace) {
+    return TestGroupResults(
+      path: path,
+      skipped: 0,
+      failed: [
+        TestResult(
+          name: '(timeout)',
+          errors: [
+            AsyncError(error, stackTrace),
+          ],
+        ),
+      ],
+      passed: [],
+    );
+  }
+
   final RelativePath path;
 
   int skipped;

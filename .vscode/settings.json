@@ -3,7 +3,5 @@
     "--show-test-device"
   ],
   "dart.flutterSdkPath": ".fvm/versions/3.38.3",
-  "dart.lineLength": 160,
-  "dart.hotReloadOnSave": "never",
-  "dart.flutterHotReloadOnSave": "never"
+  "dart.lineLength": 160
 }

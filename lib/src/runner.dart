@@ -2,17 +2,22 @@ import 'dart:async';
 import 'dart:isolate';
 import 'dart:ui';
 
+import 'package:hottie/src/ffi.dart';
 import 'package:hottie/src/run_tests.dart';
 import 'package:hottie/src/script_change.dart';
 import 'package:hottie/src/utils/logger.dart';
+import 'package:hottie/src/watch.dart';
 import 'package:stack_trace/stack_trace.dart';
 
 const _onResultsPortName = 'HottieFrontend.onResults';
+const _timeoutDuration = Duration(seconds: 1);
 
 // in VSCode, pressing F5 should run this
 // can be run from terminal, but won't reload automatically
 // flutter run test/runner.dart -d flutter-tester
-HottieFrontend runHottie() => HottieFrontend();
+HottieFrontend runHottie() {
+  return HottieFrontend();
+}
 
 Future<void> runHottieIsolate(TestMains testFuncs) async {
   final testPaths = RelativePaths.decode(PlatformDispatcher.instance.defaultRouteName);
@@ -21,7 +26,11 @@ Future<void> runHottieIsolate(TestMains testFuncs) async {
   final results = <TestGroupResults>[];
 
   for (final entry in matches) {
-    results.add(await runTests(entry).timeout(const Duration(seconds: 1)));
+    try {
+      results.add(await runTests(entry).timeout(_timeoutDuration));
+    } on TimeoutException catch (error, st) {
+      results.add(TestGroupResults.timeout(entry.key, error, st));
+    }
   }
 
   final port = IsolateNameServer.lookupPortByName(_onResultsPortName);
@@ -36,21 +45,29 @@ class HottieFrontend {
     logger('hottie connected');
     IsolateNameServer.removePortNameMapping(_onResultsPortName);
     IsolateNameServer.registerPortWithName(_port.sendPort, _onResultsPortName);
-    _port.cast<List<TestGroupResults>>().forEach(_onResults).ignoreWithLogging();
-    _observer.observe().forEach(onReassemble).ignoreWithLogging();
-    onReassemble(RelativePaths({})).ignoreWithLogging();
+    _port.cast<List<TestGroupResults>>().forEach(_onResults).withLogging();
+    _observer.observe().forEach(onReassemble).withLogging();
+
+    // FOR DEBUGGING
+    onReassemble(RelativePaths({})).withLogging();
+
+    _subscriptions.add(
+      watchDartFiles().listen(requestReload),
+    );
   }
 
-  late final StreamSubscription<void> _reloader;
   final _observer = ScriptChangeChecker();
   final _port = ReceivePort();
   Set<String> _previouslyFailed = {};
+  final _subscriptions = <StreamSubscription<void>>[];
 
   void dispose() {
     _observer.dispose();
     _port.close();
     IsolateNameServer.removePortNameMapping(_onResultsPortName);
-    _reloader.cancel().ignoreWithLogging();
+    for (final x in _subscriptions) {
+      x.cancel().withLogging();
+    }
   }
 
   Future<void> onReassemble(RelativePaths libs) async {
@@ -60,7 +77,7 @@ class HottieFrontend {
       return;
     }
 
-    // spawn('hottie', libs.encode());
+    spawn('hottie', libs.encode());
   }
 
   void _onResults(List<TestGroupResults> value) {
@@ -74,13 +91,14 @@ class HottieFrontend {
       skipped += testFile.skipped;
       for (final failedTest in testFile.failed) {
         for (final error in failedTest.errors) {
-          final frame = Trace.from(error.stackTrace).frames.where((x) => x.uri.toString().contains(testFile.path)).firstOrNull;
+          final trace = Trace.from(error.stackTrace);
+          var frame = trace.frames.where((x) => x.uri.toString().contains(testFile.path)).firstOrNull;
 
-          if (frame != null) {
-            logger('🔴 ${failedTest.name} in ${frame.location}');
-          }
+          frame ??= trace.frames.where((x) => !x.isCore).firstOrNull;
 
-          logger(error.error.toString());
+          frame ??= trace.frames.firstOrNull;
+
+          logger('🔴 ${failedTest.name} in ${frame?.location}\n${error.error}');
         }
         return;
       }

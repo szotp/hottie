@@ -30,10 +30,10 @@ class ScriptChangeChecker {
   ScriptChangeChecker() {
     _vm.then((value) {
       _disposable = value;
-    }).ignoreWithLogging();
+    }).withLogging();
 
     // first check to determine a baseline
-    checkLibraries().ignoreWithLogging();
+    checkLibraries().withLogging();
   }
 
   final String _isolateId = Service.getIsolateId(iso.Isolate.current)!;
@@ -69,7 +69,7 @@ class ScriptChangeChecker {
 
   Stream<RelativePaths> observe() async* {
     final vm = await _vm;
-    vm.streamListen('Isolate').ignoreWithLogging();
+    vm.streamListen('Isolate').withLogging();
     yield* vm.onIsolateEvent.where((event) => event.kind == 'IsolateReload').asyncMap((_) => checkLibraries());
   }
 
