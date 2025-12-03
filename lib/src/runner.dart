@@ -33,6 +33,7 @@ typedef TestMains = Map<RelativePath, TestMain>;
 
 class HottieFrontend {
   HottieFrontend() {
+    logger('hottie connected');
     IsolateNameServer.removePortNameMapping(_onResultsPortName);
     IsolateNameServer.registerPortWithName(_port.sendPort, _onResultsPortName);
     _port.cast<List<TestGroupResults>>().forEach(_onResults).ignoreWithLogging();

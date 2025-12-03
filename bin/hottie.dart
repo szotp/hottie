@@ -1,7 +1,6 @@
 #!/usr/bin/env dart
 
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 /// Watches Dart files and automatically triggers hot reload by sending 'r' to flutter run
@@ -13,15 +12,16 @@ Future<void> main() async {
 }
 
 Future<Process> _startFlutter() async {
+  Directory.current = '/Users/pawel.szot/Projekty/Experiments/hottie/example';
   return Process.start(
-    'flutter',
-    ['run', 'test/main_hottie.dart', '-d', 'flutter-tester'],
+    '/Users/pawel.szot/fvm/versions/3.38.3/bin//flutter',
+    ['run', 'test/main_hottie.dart', '-d', 'flutter-tester', '--no-pub'],
   );
 }
 
 void _forwardOutput(Process process) {
-  process.stdout.transform(utf8.decoder).listen(stdout.write);
-  process.stderr.transform(utf8.decoder).listen(stderr.write);
+  process.stdout.listen(stdout.add);
+  process.stderr.listen(stderr.add);
 }
 
 void _watchFiles(Process process) {
