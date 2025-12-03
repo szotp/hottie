@@ -17,6 +17,7 @@ dependencies:
   vm_service:
   test:
   stack_trace:
+  mason_logger:
 
 dev_dependencies:
   very_good_analysis: ^10.0.0

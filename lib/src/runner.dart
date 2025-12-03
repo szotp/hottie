@@ -7,6 +7,7 @@ import 'package:hottie/src/run_tests.dart';
 import 'package:hottie/src/script_change.dart';
 import 'package:hottie/src/utils/logger.dart';
 import 'package:hottie/src/watch.dart';
+import 'package:mason_logger/mason_logger.dart';
 import 'package:stack_trace/stack_trace.dart';
 
 const _onResultsPortName = 'HottieFrontend.onResults';
@@ -16,7 +17,7 @@ const _timeoutDuration = Duration(seconds: 1);
 // can be run from terminal, but won't reload automatically
 // flutter run test/runner.dart -d flutter-tester
 HottieFrontend runHottie() {
-  return HottieFrontend();
+  return overrideAnsiOutput(true, HottieFrontend.new);
 }
 
 Future<void> runHottieIsolate(TestMains testFuncs) async {
@@ -42,7 +43,6 @@ typedef TestMains = Map<RelativePath, TestMain>;
 
 class HottieFrontend {
   HottieFrontend() {
-    logger('hottie connected');
     IsolateNameServer.removePortNameMapping(_onResultsPortName);
     IsolateNameServer.registerPortWithName(_port.sendPort, _onResultsPortName);
     _port.cast<List<TestGroupResults>>().forEach(_onResults).withLogging();
@@ -54,6 +54,18 @@ class HottieFrontend {
     _subscriptions.add(
       watchDartFiles().listen(requestReload),
     );
+
+    _load().withLogging();
+  }
+
+  Future<void> _load() async {
+    logger.success('Hottie!');
+    final progress = logger.progress('hottie connected');
+
+    for (var i = 0; i < 100; i++) {
+      progress.update('Huh $i');
+      await Future<void>.delayed(const Duration(seconds: 1));
+    }
   }
 
   final _observer = ScriptChangeChecker();
@@ -98,13 +110,13 @@ class HottieFrontend {
 
           frame ??= trace.frames.firstOrNull;
 
-          logger('🔴 ${failedTest.name} in ${frame?.location}\n${error.error}');
+          logger.info('🔴 ${failedTest.name} in ${frame?.location}\n${error.error}');
         }
         return;
       }
     }
 
     final skippedString = skipped > 0 ? '($skipped skipped)' : '';
-    logger('✅ $passed $skippedString');
+    logger.info('✅ $passed $skippedString');
   }
 }

@@ -27,7 +27,7 @@ void main() {
     );
 
     test('async', () async {
-      await Future<void>.delayed(const Duration(milliseconds: 1111));
+      await Future<void>.delayed(const Duration(milliseconds: 1));
       expect(1, 1);
     });
 
