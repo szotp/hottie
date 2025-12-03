@@ -23,6 +23,9 @@ Future<Process> _startFlutter() async {
   return Process.start(
     program,
     args,
+    environment: {
+      'HOTTIE_FROM_SCRIPT': '1',
+    },
   );
 }
 
