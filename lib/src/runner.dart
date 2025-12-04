@@ -7,6 +7,7 @@ import 'package:hottie/src/run_tests.dart';
 import 'package:hottie/src/script_change.dart';
 import 'package:hottie/src/utils/logger.dart';
 import 'package:hottie/src/watch.dart';
+import 'package:logger/logger.dart';
 import 'package:stack_trace/stack_trace.dart';
 
 const _onResultsPortName = 'HottieFrontend.onResults';
@@ -101,13 +102,17 @@ class HottieFrontend {
 
           frame ??= trace.frames.firstOrNull;
 
-          logger.info('🔴 ${failedTest.name} in ${frame?.location}\n${error.error}');
+          logger.i('🔴 ${failedTest.name} in ${frame?.location}\n${error.error}');
         }
         return;
       }
     }
 
     final skippedString = skipped > 0 ? '($skipped skipped)' : '';
-    logger.info('✅ $passed $skippedString');
+    logger.i('✅ $passed $skippedString');
   }
+}
+
+extension on Logger {
+  void requestReload(String changedFile) {}
 }

@@ -7,7 +7,7 @@ import 'package:hottie/src/utils/logger.dart';
 /// Returns a stream that emits the path of changed Dart files.
 Stream<String> watchDartFiles() {
   final directories = ['lib', 'test', '../lib'];
-  logger.info('Watching: ${Directory.current}: $directories');
+  logger.i('Watching: ${Directory.current}: $directories');
   final controller = StreamController<String>();
 
   void handleEvent(FileSystemEvent event) {
@@ -19,7 +19,7 @@ Stream<String> watchDartFiles() {
   final listeners = directories.map(Directory.new).map((x) => x.watch(recursive: true).listen(handleEvent)).toList();
 
   controller.onCancel = () async {
-    logger.info('cancel');
+    logger.i('cancel');
     await Future.wait(listeners.map((x) => x.cancel()));
   };
 

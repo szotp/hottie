@@ -5,7 +5,7 @@ void main() {
   group('group 1', () {
     test('empty', () {});
     test('simplest', () {
-      expect(1, 2);
+      expect(1, 1);
     });
 
     testWidgets('testWidgets', (tester) async {

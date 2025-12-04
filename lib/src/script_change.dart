@@ -7,7 +7,7 @@ import 'package:hottie/src/utils/logger.dart';
 import 'package:vm_service/vm_service.dart';
 import 'package:vm_service/vm_service_io.dart';
 
-Future<VmService> _vmServiceConnect() async {
+Future<VmService> vmServiceConnect() async {
   final serviceInfo = await Service.getInfo();
   final serverUri = serviceInfo.serverUri!;
   final wsUri = 'ws://${serverUri.authority}${serverUri.path}ws';
@@ -41,7 +41,7 @@ class ScriptChangeChecker {
   /// script.relativePath -> script.id
   Map<RelativePath, String>? _previousState; // map from script uri to script hash
 
-  final Future<VmService> _vm = _vmServiceConnect();
+  final Future<VmService> _vm = vmServiceConnect();
   VmService? _disposable;
 
   Future<RelativePaths> checkLibraries() async {
