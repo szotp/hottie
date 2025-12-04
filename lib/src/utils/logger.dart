@@ -14,6 +14,10 @@ extension FutureExtension<T> on Future<T> {
 class _SimplePrinter extends SimplePrinter {
   @override
   List<String> log(LogEvent event) {
+    if (event.level == Level.error) {
+      return PrettyPrinter().log(event);
+    }
+
     final color = AnsiColor.fg(AnsiColor.grey(0.5));
     final output = super.log(event).first;
     final t = event.time;
@@ -22,6 +26,7 @@ class _SimplePrinter extends SimplePrinter {
     final ss = t.second.toString().padLeft(2, '0');
     final sss = t.millisecond.toString().padLeft(3, '0');
     final time = color('$hh:$mm:$ss:$sss');
+
     return ['$time $output'];
   }
 }

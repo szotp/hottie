@@ -16,10 +16,9 @@ void tests() {
 // flutter run test/runner.dart -d flutter-tester
 void main() {
   final isolateId = Service.getIsolateId(Isolate.current);
-  registerExtension('ext.hottie.test', (x, args) async {
-    print('running extension method $x');
+  registerExtension('ext.hottie.test', (_, args) async {
     tests();
-    return ServiceExtensionResponse.result('ok');
+    return ServiceExtensionResponse.result('{}');
   });
   final event = {
     'event': 'hottie.registered',
