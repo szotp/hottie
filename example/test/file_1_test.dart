@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+const value = 2;
+
 void main() {
   group('group 1', () {
     test('empty', () {});
     test('simplest', () {
-      expect(1, 1);
+      expect(1, value);
     });
 
     testWidgets('testWidgets', (tester) async {

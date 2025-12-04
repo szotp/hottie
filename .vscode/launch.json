@@ -11,7 +11,7 @@
             "program": "../bin/hottie.dart",
             "cwd": "example",
             "env": {
-                "FLUTTER_PATH": "../.fvm/versions/3.38.3/bin/flutter"
+                "PATH": "${env:PATH}:${workspaceFolder}/.fvm/flutter_sdk/bin"
             }
         },
         {

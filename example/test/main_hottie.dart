@@ -1,19 +1,32 @@
-import 'package:flutter/widgets.dart';
-import 'package:hottie/src/runner.dart';
+import 'dart:convert';
+import 'dart:developer';
+import 'dart:io';
+import 'dart:isolate';
 
 import 'file_1_test.dart' as f1;
 import 'file_2_test.dart' as f2;
+
+void tests() {
+  f1.main();
+  f2.main();
+}
 
 // in VSCode, pressing F5 should run this
 // can be run from terminal, but won't reload automatically
 // flutter run test/runner.dart -d flutter-tester
 void main() {
-  runHottie();
-  runApp(const Placeholder());
+  final isolateId = Service.getIsolateId(Isolate.current);
+  registerExtension('ext.hottie.test', (x, args) async {
+    print('running extension method $x');
+    tests();
+    return ServiceExtensionResponse.result('ok');
+  });
+  final event = {
+    'event': 'hottie.registered',
+    'params': {
+      'isolateId': isolateId!,
+      'name': 'ext.hottie.test',
+    },
+  };
+  stdout.writeln(jsonEncode([event]));
 }
-
-@pragma('vm:entry-point')
-void hottie() => runHottieIsolate({
-      'file_1_test.dart': f1.main,
-      'file_2_test.dart': f2.main,
-    });

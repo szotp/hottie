@@ -18,6 +18,9 @@ dependencies:
   test:
   stack_trace:
   logger:
+  flutter_daemon:
+  process:
+  dtd:
 
 dev_dependencies:
   very_good_analysis: ^10.0.0

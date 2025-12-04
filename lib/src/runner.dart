@@ -46,7 +46,6 @@ class HottieFrontend {
     IsolateNameServer.removePortNameMapping(_onResultsPortName);
     IsolateNameServer.registerPortWithName(_port.sendPort, _onResultsPortName);
     _port.cast<List<TestGroupResults>>().forEach(_onResults).withLogging();
-    _observer.observe().forEach(onReassemble).withLogging();
 
     // FOR DEBUGGING ddd
     onReassemble(RelativePaths({})).withLogging();
@@ -60,13 +59,11 @@ class HottieFrontend {
 
   Future<void> _load() async {}
 
-  final _observer = ScriptChangeChecker();
   final _port = ReceivePort();
   Set<String> _previouslyFailed = {};
   final _subscriptions = <StreamSubscription<void>>[];
 
   void dispose() {
-    _observer.dispose();
     _port.close();
     IsolateNameServer.removePortNameMapping(_onResultsPortName);
     for (final x in _subscriptions) {

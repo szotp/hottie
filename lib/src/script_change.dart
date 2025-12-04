@@ -1,15 +1,19 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
-import 'dart:isolate' as iso;
 
 import 'package:hottie/src/utils/logger.dart';
 import 'package:vm_service/vm_service.dart';
 import 'package:vm_service/vm_service_io.dart';
 
-Future<VmService> vmServiceConnect() async {
+Future<VmService?> vmServiceConnect() async {
   final serviceInfo = await Service.getInfo();
-  final serverUri = serviceInfo.serverUri!;
+  final serverUri = serviceInfo.serverUri;
+
+  if (serverUri == null) {
+    return null;
+  }
+
   final wsUri = 'ws://${serverUri.authority}${serverUri.path}ws';
 
   return vmServiceConnectUri(wsUri);
@@ -27,29 +31,27 @@ extension type RelativePaths(Set<RelativePath> paths) {
 }
 
 class ScriptChangeChecker {
-  ScriptChangeChecker() {
-    _vm.then((value) {
-      _disposable = value;
-    }).withLogging();
-
+  ScriptChangeChecker(this._vm) {
     // first check to determine a baseline
-    checkLibraries().withLogging();
+    _load().withLogging();
   }
+  final VmService _vm;
 
-  final String _isolateId = Service.getIsolateId(iso.Isolate.current)!;
+  Future<void> _load() async {
+    final info = await _vm.getVM();
+    final isolateId = info.isolates!.first.id!;
+    checkLibraries(isolateId).withLogging();
+  }
 
   /// script.relativePath -> script.id
   Map<RelativePath, String>? _previousState; // map from script uri to script hash
 
-  final Future<VmService> _vm = vmServiceConnect();
-  VmService? _disposable;
-
-  Future<RelativePaths> checkLibraries() async {
+  Future<RelativePaths> checkLibraries(String isolateId) async {
     final sw = Stopwatch();
     sw.start();
 
     final previous = _previousState;
-    final scripts = await _findTestScripts();
+    final scripts = await _findTestScripts(isolateId);
     final currentState = <RelativePath, String>{};
     final changed = <String>{};
 
@@ -65,16 +67,14 @@ class ScriptChangeChecker {
     return RelativePaths(changed);
   }
 
-  void dispose() => _disposable?.dispose();
-
   Stream<RelativePaths> observe() async* {
-    final vm = await _vm;
+    final vm = _vm;
     vm.streamListen('Isolate').withLogging();
-    yield* vm.onIsolateEvent.where((event) => event.kind == 'IsolateReload').asyncMap((_) => checkLibraries());
+    yield* vm.onIsolateEvent.where((event) => event.kind == 'IsolateReload').asyncMap((event) => checkLibraries(event.isolate!.id!));
   }
 
-  Future<List<ScriptRef>> _findTestScripts() async {
-    final scripts = await (await _vm).getScripts(_isolateId);
+  Future<List<ScriptRef>> _findTestScripts(String isolateId) async {
+    final scripts = await _vm.getScripts(isolateId);
     return scripts.scripts!.where((x) => x.isTest).toList();
   }
 }
