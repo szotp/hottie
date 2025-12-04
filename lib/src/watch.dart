@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:hottie/src/utils/logger.dart';
+
 /// Starts watching Dart files for changes.
 /// Returns a stream that emits the path of changed Dart files.
 Stream<String> watchDartFiles() {
-  final lib = Directory('lib');
-  final test = Directory('test');
-
+  final directories = ['lib', 'test', '../lib'];
+  logger.info('Watching: ${Directory.current}: $directories');
   final controller = StreamController<String>();
 
   void handleEvent(FileSystemEvent event) {
@@ -15,12 +16,11 @@ Stream<String> watchDartFiles() {
     }
   }
 
-  final libWatch = lib.watch(recursive: true).listen(handleEvent);
-  final testWatch = test.watch(recursive: true).listen(handleEvent);
+  final listeners = directories.map(Directory.new).map((x) => x.watch(recursive: true).listen(handleEvent)).toList();
 
-  controller.onCancel = () {
-    libWatch.cancel().ignore();
-    testWatch.cancel().ignore();
+  controller.onCancel = () async {
+    logger.info('cancel');
+    await Future.wait(listeners.map((x) => x.cancel()));
   };
 
   return controller.stream;

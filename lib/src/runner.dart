@@ -7,7 +7,6 @@ import 'package:hottie/src/run_tests.dart';
 import 'package:hottie/src/script_change.dart';
 import 'package:hottie/src/utils/logger.dart';
 import 'package:hottie/src/watch.dart';
-import 'package:mason_logger/mason_logger.dart';
 import 'package:stack_trace/stack_trace.dart';
 
 const _onResultsPortName = 'HottieFrontend.onResults';
@@ -17,7 +16,7 @@ const _timeoutDuration = Duration(seconds: 1);
 // can be run from terminal, but won't reload automatically
 // flutter run test/runner.dart -d flutter-tester
 HottieFrontend runHottie() {
-  return overrideAnsiOutput(true, HottieFrontend.new);
+  return HottieFrontend();
 }
 
 Future<void> runHottieIsolate(TestMains testFuncs) async {
@@ -48,25 +47,17 @@ class HottieFrontend {
     _port.cast<List<TestGroupResults>>().forEach(_onResults).withLogging();
     _observer.observe().forEach(onReassemble).withLogging();
 
-    // FOR DEBUGGING
+    // FOR DEBUGGING ddd
     onReassemble(RelativePaths({})).withLogging();
 
     _subscriptions.add(
-      watchDartFiles().listen(requestReload),
+      watchDartFiles().listen(logger.requestReload),
     );
 
     _load().withLogging();
   }
 
-  Future<void> _load() async {
-    logger.success('Hottie!');
-    final progress = logger.progress('hottie connected');
-
-    for (var i = 0; i < 100; i++) {
-      progress.update('Huh $i');
-      await Future<void>.delayed(const Duration(seconds: 1));
-    }
-  }
+  Future<void> _load() async {}
 
   final _observer = ScriptChangeChecker();
   final _port = ReceivePort();

@@ -5,7 +5,7 @@ void main() {
   group('group 1', () {
     test('empty', () {});
     test('simplest', () {
-      expect(1, 1);
+      expect(1, 2);
     });
 
     testWidgets('testWidgets', (tester) async {
@@ -21,7 +21,7 @@ void main() {
         const text = Text('Hello');
         await tester.pumpWidget(const Directionality(textDirection: TextDirection.ltr, child: text));
         final node = tester.getSemantics(find.byWidget(text));
-        expect(node.label, equals('Hello world'));
+        expect(node.label, equals('Hello world!'));
       },
       skip: true,
     );

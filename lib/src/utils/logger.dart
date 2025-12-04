@@ -1,21 +1,30 @@
-import 'package:mason_logger/mason_logger.dart';
+import 'dart:io';
+
 import 'package:stack_trace/stack_trace.dart';
 
 const hottieReloadSpell = '[HOTTIE:RELOAD]';
 const hottieFromScriptEnvironmentKey = 'HOTTIE_FROM_SCRIPT';
 
-final Logger logger = Logger();
-
-void loggerError(Object error, StackTrace trace) {
-  logger.err('${Trace.from(trace).terse}\n$error');
-}
-
-void requestReload(String changedFile) {
-  logger.info('$hottieReloadSpell because of $changedFile');
-}
+const logger = Logger();
 
 extension FutureExtension<T> on Future<T> {
   void withLogging() {
-    then((_) {}, onError: loggerError).ignore();
+    then((_) {}, onError: logger.error).ignore();
+  }
+}
+
+class Logger {
+  const Logger();
+  void info(Object message) {
+    stdout.writeln(message.toString());
+  }
+
+  void error(Object error, StackTrace stackTrace) {
+    info(error.toString());
+    info(Trace.from(stackTrace).terse.toString());
+  }
+
+  void requestReload(String changedFile) {
+    info('$hottieReloadSpell because of $changedFile');
   }
 }

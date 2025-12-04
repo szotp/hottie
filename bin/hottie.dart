@@ -34,7 +34,6 @@ void _forwardOutput(Process process) {
     // Check if Flutter app is requesting a reload
     if (line.contains(hottieReloadSpell)) {
       process.stdin.write('r');
-      return;
     }
 
     if (line.startsWith('[') || !_filterOutput) {
