@@ -10,17 +10,9 @@ environment:
   sdk: ^3.5.0
 
 dependencies:
-  async:
-  ffi:
-  test_core:
-  test_api:
   vm_service:
-  test:
   stack_trace:
   logger:
-  flutter_daemon:
-  process:
-  dtd:
 
 dev_dependencies:
   very_good_analysis: ^10.0.0

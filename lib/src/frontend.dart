@@ -13,7 +13,7 @@ class HottieFrontendNew {
     daemon = FlutterDaemon();
     await daemon.start();
 
-    await daemon.callHotReload();
+    await _onFilesChanged('x');
 
     return watchDartFiles().forEach(_onFilesChanged);
   }
@@ -29,7 +29,20 @@ class HottieFrontendNew {
   Future<void> callHottieTest() async {
     logger.i('Call extension');
 
-    final result = await daemon.vmService.callServiceExtension('ext.hottie.test', isolateId: daemon.isolateId);
-    logger.i('Call extension: $result');
+    // https://github.com/flutter/flutter/blob/master/packages/flutter_test/lib/src/test_compat.dart
+
+    final onComplete = Completer<String>();
+    daemon.onLine = (line) {
+      if (line.endsWith('Some tests failed.') || line.endsWith('All tests passed!') || line.endsWith('All tests skipped.')) {
+        onComplete.complete(line);
+      }
+    };
+    await daemon.callServiceExtension('ext.hottie.test', {});
+
+    final line = await onComplete.future;
+    logger.i(line);
+
+    await daemon.callHotReload(fullRestart: true);
+    daemon.onLine = null;
   }
 }

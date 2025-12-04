@@ -30,3 +30,33 @@ class _SimplePrinter extends SimplePrinter {
     return ['$time $output'];
   }
 }
+
+
+  // void _onResults(List<TestGroupResults> value) {
+  //   _previouslyFailed = value.where((x) => !x.isSuccess).map((x) => x.path).toSet();
+
+  //   var passed = 0;
+  //   var skipped = 0;
+
+  //   for (final testFile in value) {
+  //     passed += testFile.passed.length;
+  //     skipped += testFile.skipped;
+  //     for (final failedTest in testFile.failed) {
+  //       for (final error in failedTest.errors) {
+  //         final trace = Trace.from(error.stackTrace);
+  //         var frame = trace.frames.where((x) => x.uri.toString().contains(testFile.path)).firstOrNull;
+
+  //         frame ??= trace.frames.where((x) => !x.isCore).firstOrNull;
+
+  //         frame ??= trace.frames.firstOrNull;
+
+  //         logger.i('🔴 ${failedTest.name} in ${frame?.location}\n${error.error}');
+  //       }
+  //       return;
+  //     }
+  //   }
+
+  //   final skippedString = skipped > 0 ? '($skipped skipped)' : '';
+  //   logger.i('✅ $passed $skippedString');
+  // }
+  //

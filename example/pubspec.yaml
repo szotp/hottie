@@ -5,10 +5,8 @@ environment:
   sdk: ^3.5.0
 
 dependencies:
+  hottie:
   flutter:
     sdk: flutter
   flutter_test:
     sdk: flutter
-
-dev_dependencies:
-  hottie:

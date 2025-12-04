@@ -9,14 +9,16 @@ import 'package:hottie/src/utils/logger.dart';
 import 'package:vm_service/vm_service.dart';
 import 'package:vm_service/vm_service_io.dart';
 
+/// See https://github.com/flutter/flutter/blob/master/packages/flutter_tools/doc/daemon.md
 class FlutterDaemon {
   late final Process process;
   late final String appId;
-  late final String isolateId;
   late final VmService vmService;
 
   final _onReady = Completer<void>();
   (Completer<DaemonResult>, int)? _onResult;
+
+  void Function(String)? onLine;
 
   Future<void> start() async {
     logger.i('Launching flutter app...');
@@ -30,9 +32,9 @@ class FlutterDaemon {
 
   Future<void> _onLine(String line) async {
     final message = _Message.parse(line);
-    stdout.writeln(line);
 
     if (message == null) {
+      _onRegularText(line);
       return;
     }
 
@@ -48,11 +50,17 @@ class FlutterDaemon {
         switch (event.event) {
           case 'app.debugPort':
             _onDebugPort(event).withLogging();
-          case 'hottie.registered':
-            isolateId = event.params['isolateId'] as String;
           case 'app.started':
             _onAppStarted(event);
         }
+    }
+  }
+
+  void _onRegularText(String line) {
+    if (onLine != null) {
+      onLine?.call(line);
+    } else {
+      stdout.writeln(line);
     }
   }
 
@@ -69,8 +77,16 @@ class FlutterDaemon {
     vmService = vm;
   }
 
-  Future<void> callHotReload() async {
-    await sendCommand('app.restart', {'appId': appId});
+  Future<void> callHotReload({bool fullRestart = false}) async {
+    await sendCommand('app.restart', {'appId': appId, 'debounce': true, 'fullRestart': fullRestart});
+  }
+
+  Future<DaemonResult> callServiceExtension(String methodName, Map<String, dynamic> params) {
+    return sendCommand('app.callServiceExtension', {
+      'appId': appId,
+      'methodName': methodName,
+      'params': params,
+    });
   }
 
   int _nextId = 1;
@@ -125,7 +141,6 @@ class DaemonResult extends _Message {
   final Map<String, dynamic> result;
 }
 
-/// See https://github.com/flutter/flutter/blob/master/packages/flutter_tools/doc/daemon.md
 class _Event extends _Message {
   _Event(this.event, this.params);
 
