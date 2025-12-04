@@ -27,18 +27,15 @@ class HottieFrontendNew {
   }
 
   Future<void> callHottieTest() async {
-    logger.i('Call extension');
-
-    // https://github.com/flutter/flutter/blob/master/packages/flutter_test/lib/src/test_compat.dart
-
     final onComplete = Completer<String>();
     daemon.onLine = (line) {
+      // https://github.com/flutter/flutter/blob/master/packages/flutter_test/lib/src/test_compat.dart
       if (line.endsWith('Some tests failed.') || line.endsWith('All tests passed!') || line.endsWith('All tests skipped.')) {
         onComplete.complete(line);
       }
     };
-    await daemon.callServiceExtension('ext.hottie.test', {});
 
+    await daemon.callServiceExtension('ext.hottie.test', {});
     final line = await onComplete.future;
     logger.i(line);
 
