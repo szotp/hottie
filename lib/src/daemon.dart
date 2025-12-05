@@ -7,12 +7,14 @@ import 'dart:math';
 
 import 'package:hottie/src/utils/logger.dart';
 import 'package:vm_service/vm_service.dart';
+import 'package:vm_service/vm_service_io.dart';
 
 /// See https://github.com/flutter/flutter/blob/master/packages/flutter_tools/doc/daemon.md
 class FlutterDaemon {
   late final Process process;
   late final String appId;
   late final VmService vmService;
+  late String isolateId;
 
   final _onReady = Completer<void>();
   (Completer<DaemonResult>, int)? _onResult;
@@ -29,6 +31,7 @@ class FlutterDaemon {
   }
 
   Future<void> _onLine(String line) async {
+    logger.finest(line);
     final message = _Message.parse(line);
 
     if (message == null) {
@@ -40,7 +43,12 @@ class FlutterDaemon {
       case final DaemonResult result:
         _nextId = max(_nextId, result.id + 1);
         if (_onResult?.$2 == result.id) {
-          _onResult?.$1.complete(result);
+          if (result is DaemonError) {
+            _onResult?.$1.completeError(result.error);
+          } else {
+            _onResult?.$1.complete(result);
+          }
+
           _onResult = null;
         }
 
@@ -52,6 +60,8 @@ class FlutterDaemon {
             _onAppStarted(event);
           case 'hottie.fail':
             _onFail(event);
+          case 'hottie.registered':
+            isolateId = event.params['isolateId'] as String;
         }
     }
   }
@@ -78,17 +88,16 @@ class FlutterDaemon {
 
   /// Executes once during app start.
   Future<void> _onDebugPort(_Event event) async {
-    //final vmUri = event.params['wsUri'] as String;
-    // final vm = await vmServiceConnectUri(vmUri);
-    // final _ = await vm.getVersion();
-    // vmService = vm;
+    final vmUri = event.params['wsUri'] as String;
+    vmService = await vmServiceConnectUri(vmUri);
+    await vmService.getVersion();
   }
 
   Future<void> callHotReload({bool fullRestart = false}) async {
     await sendCommand('app.restart', {'appId': appId, 'debounce': true, 'fullRestart': fullRestart});
   }
 
-  Future<DaemonResult> callServiceExtension(String methodName, Map<String, dynamic> params) {
+  Future<DaemonResult> callServiceExtension(String methodName, Map<String, String> params) {
     return sendCommand('app.callServiceExtension', {
       'appId': appId,
       'methodName': methodName,
@@ -114,6 +123,8 @@ class FlutterDaemon {
     process.stdin.writeln(encoded);
     return completer.future;
   }
+
+  Future<void> waitForExit() async => stdin.map((x) => x[0] == 'q'.codeUnits[0]).first;
 }
 
 sealed class _Message {
@@ -134,6 +145,11 @@ sealed class _Message {
     final result = decoded['result'] as Map<String, dynamic>?;
     if (result != null) {
       return DaemonResult(decoded['id'] as int, result);
+    }
+
+    final error = decoded['error'] as String?;
+    if (error != null) {
+      return DaemonError(decoded['id'] as int, error);
     }
 
     logger.severe('Unknown json response: $decoded');
@@ -157,4 +173,10 @@ class _Event extends _Message {
   String? get id => params['id'] as String?;
   String? get appId => params['appId'] as String?;
   bool? get finished => params['finished'] as bool?;
+}
+
+class DaemonError extends DaemonResult {
+  DaemonError(int id, this.error) : super(id, {'error': error});
+
+  final String error;
 }

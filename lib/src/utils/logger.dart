@@ -17,9 +17,10 @@ class _Style extends AnsiPen {
 
 class _Printer {
   Logger create() {
-    recordStackTraceAtLevel = Level.ALL;
+    recordStackTraceAtLevel = Level.INFO;
     ansiColorDisabled = false;
     final logger = Logger.root;
+    //logger.level = Level.ALL;
     logger.onRecord.listen(_onData);
     return logger;
   }

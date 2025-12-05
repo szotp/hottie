@@ -4,7 +4,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
+import 'dart:isolate';
 
+import 'package:hottie/src/script_change.dart';
 import 'package:test_api/src/backend/declarer.dart';
 import 'package:test_api/src/backend/group.dart';
 import 'package:test_api/src/backend/invoker.dart';
@@ -17,7 +19,7 @@ import 'package:test_api/src/backend/test.dart';
 Future<void> hottie(Map<String, void Function()> tests) async {
   Future<TestResults> run(Set<String> allowed) async {
     final reporter = TestResults();
-    for (final test in tests.entries) {
+    for (final test in tests.entries.where((x) => allowed.contains(x.key))) {
       reporter.path = test.key;
       await declareAndRunTests(reporter, test.value);
     }
@@ -26,10 +28,12 @@ Future<void> hottie(Map<String, void Function()> tests) async {
   }
 
   registerExtension('ext.hottie.test', (_, args) async {
-    final reporter = await run({});
+    final paths = RelativePaths.decode(args['paths']!);
+    final reporter = await run(paths.paths);
     final resultString = jsonEncode(reporter);
     return ServiceExtensionResponse.result(resultString);
   });
+  _sendEvent('hottie.registered', {'isolateId': Service.getIsolateId(Isolate.current)});
 }
 
 Future<void> declareAndRunTests(TestResults reporter, void Function() tests) async {
@@ -135,4 +139,12 @@ class TestResults {
         'skipped': _skipped,
         'failed': _failed,
       };
+}
+
+void _sendEvent(String name, Map<String, dynamic> params) {
+  final info = {
+    'event': name,
+    'params': params,
+  };
+  stdout.writeln(jsonEncode([info]));
 }
