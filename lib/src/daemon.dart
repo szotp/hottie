@@ -14,14 +14,18 @@ class FlutterDaemon {
   late final Process process;
   late final String appId;
   late final VmService vmService;
-  late String isolateId;
 
   final _onReady = Completer<void>();
   (Completer<DaemonResult>, int)? _onResult;
 
+  Map<String, void Function(DaemonEvent)> handlers = {};
+
   void Function(String)? onLine;
 
   Future<void> start({String path = 'test/main_hottie.dart'}) async {
+    handlers['app.debugPort'] = _onDebugPort;
+    handlers['app.started'] = _onAppStarted;
+
     logger.info('Launching flutter app...');
     process = await Process.start('flutter', ['run', path, '-d', 'flutter-tester', '--no-pub', '--device-connection', 'attached', '--machine']);
     process.stderr.listen(stderr.add);
@@ -32,7 +36,7 @@ class FlutterDaemon {
 
   Future<void> _onLine(String line) async {
     logger.finest(line);
-    final message = _Message.parse(line);
+    final message = DaemonMessage.parse(line);
 
     if (message == null) {
       _onRegularText(line);
@@ -52,25 +56,9 @@ class FlutterDaemon {
           _onResult = null;
         }
 
-      case final _Event event:
-        switch (event.event) {
-          case 'app.debugPort':
-            _onDebugPort(event).withLogging();
-          case 'app.started':
-            _onAppStarted(event);
-          case 'hottie.fail':
-            _onFail(event);
-          case 'hottie.registered':
-            isolateId = event.params['isolateId'] as String;
-        }
+      case final DaemonEvent event:
+        handlers[event.event]?.call(event);
     }
-  }
-
-  void _onFail(_Event event) {
-    final stackTrace = StackTrace.fromString(event.params['stackTrace'] as String);
-    final message = event.params['error'];
-    final testName = event.params['name'];
-    logger.warning('Test "$testName" failed\n$message', null, stackTrace);
   }
 
   void _onRegularText(String line) {
@@ -81,13 +69,13 @@ class FlutterDaemon {
     }
   }
 
-  void _onAppStarted(_Event event) {
+  void _onAppStarted(DaemonEvent event) {
     appId = event.params['appId'] as String;
     _onReady.complete();
   }
 
   /// Executes once during app start.
-  Future<void> _onDebugPort(_Event event) async {
+  Future<void> _onDebugPort(DaemonEvent event) async {
     final vmUri = event.params['wsUri'] as String;
     vmService = await vmServiceConnectUri(vmUri);
     await vmService.getVersion();
@@ -127,8 +115,8 @@ class FlutterDaemon {
   Future<void> waitForExit() async => stdin.map((x) => x[0] == 'q'.codeUnits[0]).first;
 }
 
-sealed class _Message {
-  static _Message? parse(String line) {
+sealed class DaemonMessage {
+  static DaemonMessage? parse(String line) {
     final isJson = line.startsWith('[{') && line.endsWith('}]');
     if (!isJson) {
       return null;
@@ -139,7 +127,7 @@ sealed class _Message {
 
     final event = decoded['event'] as String?;
     if (event != null) {
-      return _Event(event, decoded['params'] as Map<String, dynamic>? ?? {});
+      return DaemonEvent(event, decoded['params'] as Map<String, dynamic>? ?? {});
     }
 
     final result = decoded['result'] as Map<String, dynamic>?;
@@ -157,15 +145,15 @@ sealed class _Message {
   }
 }
 
-class DaemonResult extends _Message {
+class DaemonResult extends DaemonMessage {
   DaemonResult(this.id, this.result);
 
   final int id;
   final Map<String, dynamic> result;
 }
 
-class _Event extends _Message {
-  _Event(this.event, this.params);
+class DaemonEvent extends DaemonMessage {
+  DaemonEvent(this.event, this.params);
 
   final String event;
   final Map<String, dynamic> params;

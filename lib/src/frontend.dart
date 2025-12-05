@@ -10,12 +10,18 @@ import 'package:hottie/src/watch.dart';
 class HottieFrontendNew {
   late final FlutterDaemon daemon;
   late final ScriptChangeChecker _scriptChecker;
+  bool _isInitialized = false;
+  String? isolateId;
 
   Future<void> run() async {
+    //logger.level = Level.ALL;
     daemon = FlutterDaemon();
+    daemon.handlers['hottie.registered'] = _onHottieRegistered;
+    daemon.handlers['hottie.fail'] = _onHottieFail;
     await daemon.start(path: 'test/main_hottie_dart_only.dart');
 
     _scriptChecker = ScriptChangeChecker(daemon.vmService);
+    _isInitialized = true;
 
     callHottieTest(RelativePaths({'file_2_test.dart'})).withLogging(); // only for testing
 
@@ -30,9 +36,28 @@ class HottieFrontendNew {
     logger.fine('_onFilesChanged: $changedFile');
     await daemon.callHotReload();
 
-    final paths = await _scriptChecker.checkLibraries(daemon.isolateId);
+    final paths = await _scriptChecker.checkLibraries(isolateId!);
+
+    if (paths.paths.isEmpty) {
+      return;
+    }
 
     await callHottieTest(paths);
+  }
+
+  void _onHottieRegistered(DaemonEvent event) {
+    isolateId = event.params['isolateId'] as String;
+    if (!_isInitialized) {
+      return;
+    }
+    _scriptChecker.checkLibraries(isolateId!).withLogging();
+  }
+
+  void _onHottieFail(DaemonEvent event) {
+    final stackTrace = StackTrace.fromString(event.params['stackTrace'] as String);
+    final message = event.params['error'];
+    final testName = event.params['name'];
+    logger.warning('Test "$testName" failed\n$message', null, stackTrace);
   }
 
   Future<void> callHottieTest(RelativePaths paths) async {

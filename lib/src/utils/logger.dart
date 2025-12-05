@@ -52,7 +52,7 @@ class _Printer {
     final location = trace.frames.firstWhere((x) => !x.location.contains('logger.dart') && !x.location.contains('matcher')).location;
 
     final lines = record.message.split('\n');
-    stdout.writeln('$timeString ${level.prefix} ${level(lines.first)} ${locationPen('at $location')}');
+    stdout.writeln('$timeString ${level.prefix} ${level(lines.first)} ${locationPen('at $location ')}');
 
     for (final line in lines.skip(1)) {
       stdout.writeln('$_padding ${level(line)}');
