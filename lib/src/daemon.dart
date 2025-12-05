@@ -20,10 +20,9 @@ class FlutterDaemon {
 
   void Function(String)? onLine;
 
-  Future<void> start() async {
-    logger.i('Launching flutter app...');
-    process =
-        await Process.start('flutter', ['run', 'test/main_hottie.dart', '-d', 'flutter-tester', '--no-pub', '--device-connection', 'attached', '--machine']);
+  Future<void> start({String path = 'test/main_hottie.dart'}) async {
+    logger.info('Launching flutter app...');
+    process = await Process.start('flutter', ['run', path, '-d', 'flutter-tester', '--no-pub', '--device-connection', 'attached', '--machine']);
     process.stderr.listen(stderr.add);
     process.stdout.transform(utf8.decoder).transform(const LineSplitter()).listen(_onLine);
 
@@ -52,6 +51,8 @@ class FlutterDaemon {
             _onDebugPort(event).withLogging();
           case 'app.started':
             _onAppStarted(event);
+          case 'hottieWaiting':
+            logger.info('hottie ready');
         }
     }
   }
@@ -100,7 +101,7 @@ class FlutterDaemon {
     };
 
     final encoded = json.encode([map]);
-    logger.t('Sending: $encoded');
+    logger.fine('Sending: $encoded');
 
     final completer = Completer<DaemonResult>();
     _onResult = (completer, id);
@@ -121,7 +122,7 @@ sealed class _Message {
 
     final event = decoded['event'] as String?;
     if (event != null) {
-      return _Event(event, decoded['params'] as Map<String, dynamic>);
+      return _Event(event, decoded['params'] as Map<String, dynamic>? ?? {});
     }
 
     final result = decoded['result'] as Map<String, dynamic>?;
@@ -129,7 +130,7 @@ sealed class _Message {
       return DaemonResult(decoded['id'] as int, result);
     }
 
-    logger.e('Unknown json response: $decoded');
+    logger.severe('Unknown json response: $decoded');
     return null;
   }
 }

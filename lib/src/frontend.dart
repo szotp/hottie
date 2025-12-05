@@ -11,7 +11,7 @@ class HottieFrontendNew {
 
   Future<void> run() async {
     daemon = FlutterDaemon();
-    await daemon.start();
+    await daemon.start(path: 'test/main_hottie_dart_only.dart');
 
     await _onFilesChanged('x');
 
@@ -21,23 +21,14 @@ class HottieFrontendNew {
   /// Executes when any dart file changes.
   /// Causes hot reload, which eventually leads to _onIsolateReload being called.
   Future<void> _onFilesChanged(String changedFile) async {
-    logger.i('_onFilesChanged: $changedFile');
+    logger.info('_onFilesChanged: $changedFile');
     await daemon.callHotReload();
     await callHottieTest();
   }
 
   Future<void> callHottieTest() async {
-    final onComplete = Completer<String>();
-    daemon.onLine = (line) {
-      // https://github.com/flutter/flutter/blob/master/packages/flutter_test/lib/src/test_compat.dart
-      if (line.endsWith('Some tests failed.') || line.endsWith('All tests passed!') || line.endsWith('All tests skipped.')) {
-        onComplete.complete(line);
-      }
-    };
-
-    await daemon.callServiceExtension('ext.hottie.test', {});
-    final line = await onComplete.future;
-    logger.i(line);
+    final r = await daemon.callServiceExtension('ext.hottie.test', {});
+    logger.info(r.result);
 
     await daemon.callHotReload(fullRestart: true);
     daemon.onLine = null;

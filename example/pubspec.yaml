@@ -10,3 +10,4 @@ dependencies:
     sdk: flutter
   flutter_test:
     sdk: flutter
+  test: any

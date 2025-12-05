@@ -1,7 +1,7 @@
 name: hottie
-description: "A new Flutter project."
+description: "Runs tests automatically on file changes."
 publish_to: 'none'
-version: 0.1.0-dev.1
+version: 0.2.0-dev.1
 
 workspace:
   - example
@@ -12,7 +12,9 @@ environment:
 dependencies:
   vm_service:
   stack_trace:
-  logger:
-
+  logging:
+  test_api:
+  test:
+  ansicolor:
 dev_dependencies:
   very_good_analysis: ^10.0.0
