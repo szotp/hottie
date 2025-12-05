@@ -12,7 +12,8 @@
             "cwd": "example",
             "env": {
                 "PATH": "${env:PATH}:${workspaceFolder}/.fvm/flutter_sdk/bin"
-            }
+            },
+            "preLaunchTask": "cleanup"
         },
         {
             "name": "example (directly)",

@@ -1,10 +1,7 @@
 import 'package:hottie/hottie_insider.dart';
-import 'package:test/test.dart';
+
+import 'file_2_test.dart' as f2;
 
 Future<void> main() => hottie({
-      'file_2_test.dart': () {
-        test('test', () {
-          expect(1, 5);
-        });
-      },
+      'file_2_test.dart': f2.main,
     });

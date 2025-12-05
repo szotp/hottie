@@ -1,6 +1,7 @@
 #!/usr/bin/env dart
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:hottie/src/daemon.dart';
 import 'package:hottie/src/utils/logger.dart';
@@ -13,22 +14,34 @@ class HottieFrontendNew {
     daemon = FlutterDaemon();
     await daemon.start(path: 'test/main_hottie_dart_only.dart');
 
-    await _onFilesChanged('x');
+    _onFilesChanged('x').withLogging(); // only for testing
 
-    return watchDartFiles().forEach(_onFilesChanged);
+    watchDartFiles().forEach(_onFilesChanged).withLogging();
+
+    await stdin.map((x) => x[0] == 'q'.codeUnits[0]).first;
   }
 
   /// Executes when any dart file changes.
   /// Causes hot reload, which eventually leads to _onIsolateReload being called.
   Future<void> _onFilesChanged(String changedFile) async {
-    logger.info('_onFilesChanged: $changedFile');
+    logger.fine('_onFilesChanged: $changedFile');
     await daemon.callHotReload();
     await callHottieTest();
   }
 
   Future<void> callHottieTest() async {
     final r = await daemon.callServiceExtension('ext.hottie.test', {});
-    logger.info(r.result);
+    final passed = r.result['passed'] as int;
+    final failed = r.result['failed'] as int;
+    final skipped = r.result['skipped'] as int;
+
+    if (failed == 0) {
+      if (skipped > 0) {
+        logger.info('Tests passed: $passed ($skipped skipped)');
+      } else {
+        logger.info('Tests passed: $passed');
+      }
+    }
 
     await daemon.callHotReload(fullRestart: true);
     daemon.onLine = null;

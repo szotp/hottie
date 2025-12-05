@@ -8,15 +8,15 @@ void main() {
     });
 
     test('simple 2', () async {
-      expect(1, 1);
+      expect(1, 2);
     });
 
     test('simple 3', () async {
-      expect(1, 10);
+      expect(1, 1);
     });
 
     test('simple 4', () async {
-      expect(calculate(0, 1), 5);
+      expect(calculate(0, 1), 1);
     });
   });
 }

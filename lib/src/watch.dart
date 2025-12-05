@@ -7,7 +7,7 @@ import 'package:hottie/src/utils/logger.dart';
 /// Returns a stream that emits the path of changed Dart files.
 Stream<String> watchDartFiles() {
   final directories = ['lib', 'test', '../lib'];
-  logger.info('Watching: ${Directory.current}: $directories');
+  logger.fine('Watching: ${Directory.current.path}: $directories');
   final controller = StreamController<String>();
 
   void handleEvent(FileSystemEvent event) {

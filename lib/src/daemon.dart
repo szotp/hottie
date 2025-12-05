@@ -7,7 +7,6 @@ import 'dart:math';
 
 import 'package:hottie/src/utils/logger.dart';
 import 'package:vm_service/vm_service.dart';
-import 'package:vm_service/vm_service_io.dart';
 
 /// See https://github.com/flutter/flutter/blob/master/packages/flutter_tools/doc/daemon.md
 class FlutterDaemon {
@@ -51,17 +50,24 @@ class FlutterDaemon {
             _onDebugPort(event).withLogging();
           case 'app.started':
             _onAppStarted(event);
-          case 'hottieWaiting':
-            logger.info('hottie ready');
+          case 'hottie.fail':
+            _onFail(event);
         }
     }
+  }
+
+  void _onFail(_Event event) {
+    final stackTrace = StackTrace.fromString(event.params['stackTrace'] as String);
+    final message = event.params['error'];
+    final testName = event.params['name'];
+    logger.warning('Test "$testName" failed\n$message', null, stackTrace);
   }
 
   void _onRegularText(String line) {
     if (onLine != null) {
       onLine?.call(line);
     } else {
-      stdout.writeln(line);
+      logger.fine(line);
     }
   }
 
@@ -72,10 +78,10 @@ class FlutterDaemon {
 
   /// Executes once during app start.
   Future<void> _onDebugPort(_Event event) async {
-    final vmUri = event.params['wsUri'] as String;
-    final vm = await vmServiceConnectUri(vmUri);
-    final _ = await vm.getVersion();
-    vmService = vm;
+    //final vmUri = event.params['wsUri'] as String;
+    // final vm = await vmServiceConnectUri(vmUri);
+    // final _ = await vm.getVersion();
+    // vmService = vm;
   }
 
   Future<void> callHotReload({bool fullRestart = false}) async {
