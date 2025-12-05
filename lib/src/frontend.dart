@@ -3,6 +3,7 @@
 import 'dart:async';
 
 import 'package:hottie/src/daemon.dart';
+import 'package:hottie/src/generate_main.dart';
 import 'package:hottie/src/script_change.dart';
 import 'package:hottie/src/utils/logger.dart';
 import 'package:hottie/src/watch.dart';
@@ -12,18 +13,21 @@ class HottieFrontendNew {
   late final ScriptChangeChecker _scriptChecker;
   bool _isInitialized = false;
   String? isolateId;
+  final Set<RelativePath> _failedTests = {};
 
-  Future<void> run() async {
+  Future<void> run(List<String> args) async {
+    final path = await generateMain(args);
+
     //logger.level = Level.ALL;
     daemon = FlutterDaemon();
     daemon.handlers['hottie.registered'] = _onHottieRegistered;
     daemon.handlers['hottie.fail'] = _onHottieFail;
-    await daemon.start(path: 'test/main_hottie_dart_only.dart');
+    await daemon.start(path: path);
 
     _scriptChecker = ScriptChangeChecker(daemon.vmService);
     _isInitialized = true;
 
-    callHottieTest(RelativePaths({'file_2_test.dart'})).withLogging(); // only for testing
+    callHottieTest(RelativePaths({'test/file_2_test.dart'})).withLogging(); // only for testing
 
     watchDartFiles().forEach(_onFilesChanged).withLogging();
 
@@ -66,14 +70,23 @@ class HottieFrontendNew {
       'paths': paths.encode(),
     });
     final passed = r.result['passed'] as int;
-    final failed = r.result['failed'] as int;
-    final skipped = r.result['skipped'] as int;
+    final failed = (r.result['failed'] as List).toSet().cast<String>();
 
-    if (failed == 0) {
-      if (skipped > 0) {
-        logger.info('Tests passed: $passed ($skipped skipped)');
+    for (final path in paths.paths) {
+      if (failed.contains(path)) {
+        _failedTests.add(path);
       } else {
-        logger.info('Tests passed: $passed');
+        _failedTests.remove(path);
+      }
+    }
+
+    if (failed.isEmpty) {
+      final failedStrings = _failedTests.join(', ');
+
+      if (_failedTests.isEmpty) {
+        logger.info('Tests passed: $passed. All good!');
+      } else {
+        logger.info('Tests passed: $passed. Needs recheck: $failedStrings');
       }
     }
 

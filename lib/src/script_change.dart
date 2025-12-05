@@ -89,6 +89,6 @@ extension on ScriptRef {
     final uri = Uri.parse(this.uri!);
     final segments = uri.pathSegments;
     final index = segments.indexOf('test');
-    return segments.sublist(index + 1).join('/');
+    return segments.sublist(index).join('/');
   }
 }

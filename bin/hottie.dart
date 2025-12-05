@@ -4,4 +4,4 @@ import 'dart:async';
 
 import 'package:hottie/src/frontend.dart';
 
-Future<void> main() => HottieFrontendNew().run();
+Future<void> main(List<String> args) => HottieFrontendNew().run(args);

@@ -102,7 +102,7 @@ Future<void> _runLiveTest(
 class TestResults {
   int _passed = 0;
   int _skipped = 0;
-  int _failed = 0;
+  final Set<RelativePath> _failed = {};
 
   String path = '';
 
@@ -112,7 +112,7 @@ class TestResults {
       _passed++;
     } else {
       final error = liveTest.errors.first;
-      _failed++;
+      _failed.add(path);
       _onError(liveTest.individualName, error);
     }
   }
@@ -137,7 +137,7 @@ class TestResults {
   Map<String, dynamic> toJson() => {
         'passed': _passed,
         'skipped': _skipped,
-        'failed': _failed,
+        'failed': _failed.toList(),
       };
 }
 

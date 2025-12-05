@@ -22,7 +22,7 @@ class FlutterDaemon {
 
   void Function(String)? onLine;
 
-  Future<void> start({String path = 'test/main_hottie.dart'}) async {
+  Future<void> start({required String path}) async {
     handlers['app.debugPort'] = _onDebugPort;
     handlers['app.started'] = _onAppStarted;
 
