@@ -13,7 +13,12 @@
             "env": {
                 "PATH": "${env:PATH}:${workspaceFolder}/.fvm/flutter_sdk/bin"
             },
-            "preLaunchTask": "cleanup"
+            "preLaunchTask": "cleanup",
+            "args": [
+                "-v",
+                "run",
+                "test/file_2_test.dart"
+            ]
         },
         {
             "name": "example (directly)",

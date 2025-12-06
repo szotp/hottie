@@ -3,8 +3,18 @@ import 'dart:isolate';
 
 import 'package:hottie/src/script_change.dart';
 
-Future<RelativePath> generateMain(List<String> args) async {
-  final files = Directory('test').listSync(recursive: true).where((x) => x.path.endsWith('_test.dart')).toList();
+const _path = '.dart_tool/main_hottie.g.dart';
+
+Future<(RelativePath, RelativePaths)> generateMain(RelativePaths requestedPaths) async {
+  final RelativePaths testPaths;
+
+  if (requestedPaths.paths.isNotEmpty) {
+    testPaths = requestedPaths;
+  } else {
+    final files = Directory('test').listSync(recursive: true).where((x) => x.path.endsWith('_test.dart')).toList();
+    testPaths = RelativePaths(files.map((x) => x.path).toSet());
+  }
+
   final resolved = await Isolate.resolvePackageUri(Uri.parse('package:hottie/hottie_insider.dart'));
 
   final buffer = StringBuffer();
@@ -12,19 +22,18 @@ Future<RelativePath> generateMain(List<String> args) async {
 
   buffer.writeln("import '$resolved';");
 
-  for (final (index, file) in files.indexed) {
-    buffer.writeln("import '${file.absolute.path}' as f$index;");
+  for (final (index, uri) in testPaths.uris.indexed) {
+    buffer.writeln("import '$uri' as f$index;");
   }
 
   buffer.writeln('Future<void> main() => hottie({');
 
-  for (final (index, file) in files.indexed) {
-    buffer.writeln("'${file.path}': f$index.main,");
+  for (final (index, RelativePath path) in testPaths.paths.indexed) {
+    buffer.writeln("'$path': f$index.main,");
   }
 
   buffer.writeln('});');
 
-  File('build/main_hottie.g.dart').writeAsStringSync(buffer.toString());
-
-  return 'build/main_hottie.g.dart';
+  File(_path).writeAsStringSync(buffer.toString());
+  return (_path, testPaths);
 }

@@ -23,6 +23,14 @@ class FlutterDaemon {
   void Function(String)? onLine;
 
   Future<void> start({required String path}) async {
+    try {
+      stdin.lineMode = false;
+      stdin.echoMode = false;
+      stdin.transform(utf8.decoder).where(_onKey);
+    } on StdinException {
+      // running in debugger
+    }
+
     handlers['app.debugPort'] = _onDebugPort;
     handlers['app.started'] = _onAppStarted;
 
@@ -82,11 +90,11 @@ class FlutterDaemon {
   }
 
   Future<void> callHotReload({bool fullRestart = false}) async {
-    await sendCommand('app.restart', {'appId': appId, 'debounce': true, 'fullRestart': fullRestart});
+    await _sendCommand('app.restart', {'appId': appId, 'debounce': true, 'fullRestart': fullRestart});
   }
 
   Future<DaemonResult> callServiceExtension(String methodName, Map<String, String> params) {
-    return sendCommand('app.callServiceExtension', {
+    return _sendCommand('app.callServiceExtension', {
       'appId': appId,
       'methodName': methodName,
       'params': params,
@@ -95,7 +103,7 @@ class FlutterDaemon {
 
   int _nextId = 1;
 
-  Future<DaemonResult> sendCommand(String name, Map<String, dynamic> params) {
+  Future<DaemonResult> _sendCommand(String name, Map<String, dynamic> params) {
     final id = _nextId++;
     final map = {
       'id': id,
@@ -111,8 +119,17 @@ class FlutterDaemon {
     process.stdin.writeln(encoded);
     return completer.future;
   }
+}
 
-  Future<void> waitForExit() async => stdin.map((x) => x[0] == 'q'.codeUnits[0]).first;
+bool _onKey(String key) {
+  switch (key) {
+    case 'q':
+      logger.info('Quitting');
+      exit(0);
+    default:
+      logger.info('Unknown key: $key');
+      return false;
+  }
 }
 
 sealed class DaemonMessage {

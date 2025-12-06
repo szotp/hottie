@@ -30,14 +30,14 @@ class _Printer {
 
   final locationPen = AnsiPen()..gray(level: 0.95);
   final Map<Level, _Style> levels = {
-    Level.FINEST: _Style('F'),
-    Level.FINER: _Style('F'),
-    Level.FINE: _Style('F'),
-    Level.CONFIG: _Style('C'),
-    Level.INFO: _Style('ℹ️'),
-    Level.WARNING: _Style('⚠️')..red(bold: true),
-    Level.SEVERE: _Style('‼️'),
-    Level.SHOUT: _Style('🚨🚨🚨🚨'),
+    Level.FINEST: _Style('F '),
+    Level.FINER: _Style('F '),
+    Level.FINE: _Style('F '),
+    Level.CONFIG: _Style('C '),
+    Level.INFO: _Style('ℹ️ '),
+    Level.WARNING: _Style('⚠️ ')..red(bold: true),
+    Level.SEVERE: _Style('‼️ '),
+    Level.SHOUT: _Style('🚨')..red(bg: true),
     Level.OFF: _Style('-'),
   };
 
@@ -49,7 +49,7 @@ class _Printer {
     final level = levels[record.level]!;
 
     final trace = Trace.from(record.stackTrace ?? StackTrace.current);
-    final location = trace.frames.firstWhere((x) => !x.location.contains('logger.dart') && !x.location.contains('matcher')).location;
+    final location = trace.frames.where((x) => !x.location.contains('logger.dart') && !x.location.contains('matcher')).firstOrNull?.location;
 
     final lines = record.message.split('\n');
     stdout.writeln('$timeString ${level.prefix} ${level(lines.first)} ${locationPen('at $location ')}');

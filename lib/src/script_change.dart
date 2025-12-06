@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
+import 'dart:io';
 
 import 'package:hottie/src/utils/logger.dart';
 import 'package:vm_service/vm_service.dart';
@@ -27,7 +28,17 @@ extension type RelativePaths(Set<RelativePath> paths) {
     return RelativePaths(testPaths);
   }
 
+  List<Uri> get uris => paths.map((x) => Uri.file(File(x).absolute.path)).toList();
+
   String encode() => jsonEncode(paths.toList());
+
+  String describe() {
+    if (paths.length > 3) {
+      return '${paths.length} files';
+    } else {
+      return paths.join(', ');
+    }
+  }
 }
 
 class ScriptChangeChecker {

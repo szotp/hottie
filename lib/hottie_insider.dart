@@ -6,7 +6,6 @@ import 'dart:developer';
 import 'dart:io';
 import 'dart:isolate';
 
-import 'package:hottie/src/script_change.dart';
 import 'package:test_api/src/backend/declarer.dart';
 import 'package:test_api/src/backend/group.dart';
 import 'package:test_api/src/backend/invoker.dart';
@@ -16,7 +15,7 @@ import 'package:test_api/src/backend/suite.dart';
 import 'package:test_api/src/backend/suite_platform.dart';
 import 'package:test_api/src/backend/test.dart';
 
-Future<void> hottie(Map<String, void Function()> tests) async {
+Future<void> hottie(Map<String, void Function()> tests, {bool runNormally = false}) async {
   Future<TestResults> run(Set<String> allowed) async {
     final reporter = TestResults();
     for (final test in tests.entries.where((x) => allowed.contains(x.key))) {
@@ -28,12 +27,19 @@ Future<void> hottie(Map<String, void Function()> tests) async {
   }
 
   registerExtension('ext.hottie.test', (_, args) async {
-    final paths = RelativePaths.decode(args['paths']!);
-    final reporter = await run(paths.paths);
+    final paths = (jsonDecode(args['paths']!) as List).toSet().cast<String>();
+    final reporter = await run(paths);
     final resultString = jsonEncode(reporter);
     return ServiceExtensionResponse.result(resultString);
   });
+
   _sendEvent('hottie.registered', {'isolateId': Service.getIsolateId(Isolate.current)});
+
+  if (runNormally) {
+    for (final test in tests.values) {
+      test();
+    }
+  }
 }
 
 Future<void> declareAndRunTests(TestResults reporter, void Function() tests) async {
@@ -102,7 +108,7 @@ Future<void> _runLiveTest(
 class TestResults {
   int _passed = 0;
   int _skipped = 0;
-  final Set<RelativePath> _failed = {};
+  final Set<String> _failed = {};
 
   String path = '';
 
