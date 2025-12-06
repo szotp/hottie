@@ -17,6 +17,7 @@ import 'package:test_api/src/backend/test.dart';
 
 typedef TestMap = Map<String, void Function()>;
 typedef TestMapFactory = TestMap Function();
+const String hottieExtensionName = 'ext.hottie.test';
 
 Future<void> hottie(TestMapFactory tests, {bool runNormally = false}) async {
   Future<TestResults> run(Set<String> allowed) async {
@@ -29,14 +30,14 @@ Future<void> hottie(TestMapFactory tests, {bool runNormally = false}) async {
     return reporter;
   }
 
-  registerExtension('ext.hottie.test', (_, args) async {
+  registerExtension(hottieExtensionName, (_, args) async {
     final paths = (jsonDecode(args['paths']!) as List).toSet().cast<String>();
     final reporter = await run(paths);
     final resultString = jsonEncode(reporter);
     return ServiceExtensionResponse.result(resultString);
   });
 
-  _sendEvent('hottie.registered', {'isolateId': Service.getIsolateId(Isolate.current)});
+  HottieRegistered(Service.getIsolateId(Isolate.current)!, tests().keys.toSet()).send();
 
   if (runNormally) {
     for (final test in tests().values) {
@@ -109,51 +110,104 @@ Future<void> _runLiveTest(
 }
 
 class TestResults {
-  int _passed = 0;
-  int _skipped = 0;
-  final Set<String> _failed = {};
+  TestResults([this.passed = 0, this.skipped = 0, this.failed = 0]);
+
+  factory TestResults.fromJson(Map<String, dynamic> result) {
+    return TestResults(
+      result['passed'] as int,
+      result['skipped'] as int,
+      result['failed'] as int,
+    );
+  }
+  int passed;
+  int skipped;
+  int failed;
 
   String path = '';
 
   void _onTestFinished(LiveTest liveTest) {
     final isSuccess = liveTest.state.result.isPassing;
     if (isSuccess) {
-      _passed++;
+      passed++;
+
+      TestFinished(liveTest.individualName, path, null, null).send();
     } else {
       final error = liveTest.errors.first;
-      _failed.add(path);
-      _onError(liveTest.individualName, error);
+      failed++;
+      TestFinished(liveTest.individualName, path, error.error.toString(), error.stackTrace).send();
     }
   }
 
-  void _onError(String testName, AsyncError error) {
-    final info = {
-      'event': 'hottie.fail',
-      'params': {
-        'path': path,
-        'name': testName,
-        'error': error.error.toString(),
-        'stackTrace': error.stackTrace.toString(),
-      },
-    };
-    stdout.writeln(jsonEncode([info]));
-  }
-
   void _onTestSkipped() {
-    _skipped++;
+    skipped++;
   }
 
   Map<String, dynamic> toJson() => {
-        'passed': _passed,
-        'skipped': _skipped,
-        'failed': _failed.toList(),
+        'passed': passed,
+        'skipped': skipped,
+        'failed': failed,
       };
 }
 
-void _sendEvent(String name, Map<String, dynamic> params) {
-  final info = {
-    'event': name,
-    'params': params,
-  };
-  stdout.writeln(jsonEncode([info]));
+class EventHandle<T> {
+  const EventHandle(this.name, this.mapper);
+  final String name;
+  final T Function(Map<String, dynamic>) mapper;
+
+  void send(T event) {
+    final info = {
+      'event': name,
+      'params': (event as dynamic).toJson(),
+    };
+    stdout.writeln(jsonEncode([info]));
+  }
+}
+
+class HottieRegistered {
+  HottieRegistered(this.isolateId, this.paths);
+
+  factory HottieRegistered.fromJson(Map<String, dynamic> json) {
+    return HottieRegistered(
+      json['isolateId'] as String,
+      (json['paths'] as List).toSet().cast<String>(),
+    );
+  }
+  static const EventHandle<HottieRegistered> event = EventHandle('hottie.registered', HottieRegistered.fromJson);
+
+  final String isolateId;
+  final Set<String> paths;
+
+  void send() => event.send(this);
+
+  Map<String, dynamic> toJson() => {
+        'isolateId': isolateId,
+        'paths': paths.toList(),
+      };
+}
+
+class TestFinished {
+  TestFinished(this.name, this.path, this.error, this.stackTrace);
+  factory TestFinished.fromJson(Map<String, dynamic> json) {
+    return TestFinished(
+      json['name'] as String,
+      json['path'] as String,
+      json['error'] as String?,
+      json['stackTrace'] != null ? StackTrace.fromString(json['stackTrace'] as String) : null,
+    );
+  }
+  static const EventHandle<TestFinished> event = EventHandle('hottie.testFinished', TestFinished.fromJson);
+
+  final String name;
+  final String path;
+  final String? error;
+  final StackTrace? stackTrace;
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'path': path,
+        'error': error,
+        'stackTrace': stackTrace?.toString(),
+      };
+
+  void send() => event.send(this);
 }

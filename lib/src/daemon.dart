@@ -5,9 +5,41 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:hottie/hottie_insider.dart';
 import 'package:hottie/src/utils/logger.dart';
 import 'package:vm_service/vm_service.dart';
 import 'package:vm_service/vm_service_io.dart';
+
+class StdoutProgress {
+  StdoutProgress(this._label) {
+    stdout.write('$_label... (0.0s)');
+    _timer = Timer.periodic(const Duration(milliseconds: 100), (_) {
+      assert(_timer != null, '');
+      print();
+    });
+  }
+  final _watch = Stopwatch()..start();
+  Timer? _timer;
+  String _label;
+
+  void print() {
+    final elapsed = (_watch.elapsed.inMilliseconds / 1000).toStringAsFixed(1);
+    stdout.write('\r$_label... (${elapsed}s)');
+  }
+
+  void finish(String finalInfo) {
+    print();
+    _timer?.cancel();
+    _timer = null;
+
+    stdout.writeln('\n$finalInfo.');
+  }
+
+  void update(String newLabel) {
+    _label = newLabel;
+    print();
+  }
+}
 
 /// See https://github.com/flutter/flutter/blob/master/packages/flutter_tools/doc/daemon.md
 class FlutterDaemon {
@@ -22,6 +54,13 @@ class FlutterDaemon {
 
   void Function(String)? onLine;
 
+  void register<T>(EventHandle<T> handle, void Function(T) handler) {
+    handlers[handle.name] = (event) {
+      final mapped = handle.mapper(event.params);
+      handler(mapped);
+    };
+  }
+
   Future<void> start({required String path}) async {
     try {
       stdin.lineMode = false;
@@ -34,12 +73,12 @@ class FlutterDaemon {
     handlers['app.debugPort'] = _onDebugPort;
     handlers['app.started'] = _onAppStarted;
 
-    logger.info('Launching flutter app...');
+    final progress = StdoutProgress('Launching flutter-tester');
     process = await Process.start('flutter', ['run', path, '-d', 'flutter-tester', '--no-pub', '--device-connection', 'attached', '--machine']);
     process.stderr.listen(stderr.add);
     process.stdout.transform(utf8.decoder).transform(const LineSplitter()).listen(_onLine);
-
-    return _onReady.future;
+    await _onReady.future;
+    progress.finish('Waiting for changes...');
   }
 
   Future<void> _onLine(String line) async {
@@ -70,11 +109,7 @@ class FlutterDaemon {
   }
 
   void _onRegularText(String line) {
-    if (onLine != null) {
-      onLine?.call(line);
-    } else {
-      logger.fine(line);
-    }
+    onLine?.call(line);
   }
 
   void _onAppStarted(DaemonEvent event) {

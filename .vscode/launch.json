@@ -17,7 +17,8 @@
             "args": [
                 "--loggerLevel",
                 "ALL",
-                "watch"
+                "watch",
+                "test/file_2_test.dart",
             ]
         },
         {

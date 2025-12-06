@@ -70,6 +70,6 @@ class _RunCommand extends Command<void> {
     }
 
     final frontend = HottieFrontendNew();
-    await frontend.run(RelativePaths(files.toSet()));
+    await frontend.run(paths: RelativePaths(files.toSet()));
   }
 }

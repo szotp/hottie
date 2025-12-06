@@ -1,7 +1,9 @@
 #!/usr/bin/env dart
 
 import 'dart:async';
+import 'dart:io';
 
+import 'package:hottie/hottie_insider.dart';
 import 'package:hottie/src/daemon.dart';
 import 'package:hottie/src/generate_main.dart';
 import 'package:hottie/src/script_change.dart';
@@ -13,31 +15,33 @@ HottieFrontendNew? _frontend;
 
 class HottieFrontendNew {
   final FlutterDaemon daemon = FlutterDaemon();
-  late final RelativePaths allTests;
+  late RelativePaths allTests;
   late final ScriptChangeChecker _scriptChecker;
   bool _isInitialized = false;
-  bool _isTesting = false;
+  StdoutProgress? _testing;
   String? isolateId;
-  final Set<RelativePath> _failedTests = {};
 
-  Future<void> run(RelativePaths paths) async {
-    // Directory.current = '/Users/pawelszot/Development/provider/packages/provider';
-    final (hottiePath, _) = await generateMain(RelativePaths({}));
+  Future<void> run({required RelativePaths paths, String? existingHottiePath}) async {
+    final String hottiePath;
 
-    daemon.handlers['hottie.registered'] = _onHottieRegistered;
-    daemon.handlers['hottie.fail'] = _onHottieFail;
+    if (existingHottiePath != null) {
+      assert(File(existingHottiePath).existsSync(), '$existingHottiePath does not exist');
+      hottiePath = existingHottiePath;
+    } else {
+      (hottiePath, _) = await generateMain(paths.paths.isNotEmpty ? paths : null);
+    }
+
+    daemon.register(HottieRegistered.event, _onHottieRegistered);
+    daemon.register(TestFinished.event, _onTestFinished);
     await daemon.start(path: hottiePath);
 
     _scriptChecker = ScriptChangeChecker(daemon.vmService);
     _isInitialized = true;
 
-    watchDartFiles().forEach(_onFilesChanged).withLogging();
-
-    final (_, allTests) = await generateMain(null);
-    this.allTests = allTests;
-    _onFilesChanged(null);
-
+    watchDartFiles().forEach((_) => runCycle()).withLogging();
     _frontend = this;
+
+    testAll();
   }
 
   void dispose() {
@@ -53,79 +57,65 @@ class HottieFrontendNew {
     callHottieTest(all).withLogging();
   }
 
-  /// Executes when any dart file changes.
-  /// Causes hot reload, which eventually leads to _onIsolateReload being called.
-  Future<void> _onFilesChanged(String? changedFile) async {
-    logger.fine('_onFilesChanged: $changedFile isTesting: $_isTesting');
-
-    if (_isTesting) {
+  Future<void> runCycle() async {
+    if (_testing != null) {
       return;
     }
 
-    await daemon.callHotReload();
+    stdout.writeln('\n');
+    _testing = StdoutProgress('Scanning');
 
-    final paths = await _scriptChecker.checkLibraries(isolateId!);
+    try {
+      await daemon.callHotReload();
 
-    if (paths.paths.isEmpty) {
-      return;
+      final paths = await _scriptChecker.checkLibraries(isolateId!);
+
+      if (paths.paths.isEmpty) {
+        _testing?.finish('Nothing to test');
+        return;
+      }
+
+      _testing?.update('Testing ${paths.describe()}');
+
+      await callHottieTest(paths);
+
+      await daemon.callHotReload(fullRestart: true);
+    } catch (error, stackTrace) {
+      logger.severe(error, error, stackTrace);
+    } finally {
+      _testing = null;
     }
-
-    await callHottieTest(paths);
   }
 
-  void _onHottieRegistered(DaemonEvent event) {
-    isolateId = event.params['isolateId'] as String;
+  void _onHottieRegistered(HottieRegistered parsed) {
+    allTests = RelativePaths(parsed.paths);
     if (!_isInitialized) {
       return;
     }
     _scriptChecker.checkLibraries(isolateId!).withLogging();
   }
 
-  void _onHottieFail(DaemonEvent event) {
-    final stackTrace = StackTrace.fromString(event.params['stackTrace'] as String);
-    final message = event.params['error'];
-    final testName = event.params['name'];
-    logger.warning('Test "$testName" failed\n$message', null, stackTrace);
+  void _onTestFinished(TestFinished parsed) {
+    if (parsed.error != null) {
+      logger.warning('Test "${parsed.name}" failed\n${parsed.error}', null, parsed.stackTrace);
+    }
+
+    _testing?.update('');
   }
 
   Future<void> callHottieTest(RelativePaths paths) async {
-    logger.info('Testing: ${paths.describe()}');
+    logger.fine('Testing: ${paths.describe()}');
 
-    final DaemonResult r;
+    final r = await daemon.callServiceExtension(hottieExtensionName, {
+      'paths': paths.encode(),
+    });
 
-    try {
-      _isTesting = true;
-      r = await daemon.callServiceExtension('ext.hottie.test', {
-        'paths': paths.encode(),
-      });
-    } catch (error, stackTrace) {
-      logger.shout('callHottieTest failed', error, stackTrace);
-      return;
-    } finally {
-      _isTesting = false;
+    final parsed = TestResults.fromJson(r.result);
+
+    if (parsed.failed == 0) {
+      _testing?.finish('${parsed.passed} tests passed.');
+    } else {
+      _testing?.finish('${parsed.failed} tests failed');
     }
-
-    final passed = r.result['passed'] as int;
-    final failed = (r.result['failed'] as List).toSet().cast<String>();
-
-    for (final path in paths.paths) {
-      if (failed.contains(path)) {
-        _failedTests.add(path);
-      } else {
-        _failedTests.remove(path);
-      }
-    }
-
-    if (failed.isEmpty) {
-      final failedStrings = _failedTests.join(', ');
-
-      if (_failedTests.isEmpty) {
-        logger.info('Tests passed: $passed. All good!');
-      } else {
-        logger.info('Tests passed: $passed. Needs recheck: $failedStrings');
-      }
-    }
-
-    await daemon.callHotReload(fullRestart: true);
   }
 }
