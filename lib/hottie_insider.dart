@@ -15,10 +15,13 @@ import 'package:test_api/src/backend/suite.dart';
 import 'package:test_api/src/backend/suite_platform.dart';
 import 'package:test_api/src/backend/test.dart';
 
-Future<void> hottie(Map<String, void Function()> tests, {bool runNormally = false}) async {
+typedef TestMap = Map<String, void Function()>;
+typedef TestMapFactory = TestMap Function();
+
+Future<void> hottie(TestMapFactory tests, {bool runNormally = false}) async {
   Future<TestResults> run(Set<String> allowed) async {
     final reporter = TestResults();
-    for (final test in tests.entries.where((x) => allowed.contains(x.key))) {
+    for (final test in tests().entries.where((x) => allowed.contains(x.key))) {
       reporter.path = test.key;
       await declareAndRunTests(reporter, test.value);
     }
@@ -36,7 +39,7 @@ Future<void> hottie(Map<String, void Function()> tests, {bool runNormally = fals
   _sendEvent('hottie.registered', {'isolateId': Service.getIsolateId(Isolate.current)});
 
   if (runNormally) {
-    for (final test in tests.values) {
+    for (final test in tests().values) {
       test();
     }
   }

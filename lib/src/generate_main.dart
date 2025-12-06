@@ -2,13 +2,14 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'package:hottie/src/script_change.dart';
+import 'package:hottie/src/utils/logger.dart';
 
 const _path = '.dart_tool/main_hottie.g.dart';
 
-Future<(RelativePath, RelativePaths)> generateMain(RelativePaths requestedPaths) async {
+Future<(RelativePath, RelativePaths)> generateMain(RelativePaths? requestedPaths) async {
   final RelativePaths testPaths;
 
-  if (requestedPaths.paths.isNotEmpty) {
+  if (requestedPaths != null) {
     testPaths = requestedPaths;
   } else {
     final files = Directory('test').listSync(recursive: true).where((x) => x.path.endsWith('_test.dart')).toList();
@@ -26,14 +27,16 @@ Future<(RelativePath, RelativePaths)> generateMain(RelativePaths requestedPaths)
     buffer.writeln("import '$uri' as f$index;");
   }
 
-  buffer.writeln('Future<void> main() => hottie({');
+  buffer.writeln('Map<String, void Function()> _tests() => {');
 
   for (final (index, RelativePath path) in testPaths.paths.indexed) {
     buffer.writeln("'$path': f$index.main,");
   }
 
-  buffer.writeln('});');
+  buffer.writeln('};');
+  buffer.writeln('Future<void> main() => hottie(_tests);');
 
   File(_path).writeAsStringSync(buffer.toString());
+  logger.fine('Generated $_path with ${testPaths.describe()}');
   return (_path, testPaths);
 }

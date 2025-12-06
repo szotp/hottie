@@ -22,8 +22,7 @@ class HottieFrontendNew {
 
   Future<void> run(RelativePaths paths) async {
     // Directory.current = '/Users/pawelszot/Development/provider/packages/provider';
-    final (hottiePath, allTests) = await generateMain(paths);
-    this.allTests = allTests;
+    final (hottiePath, _) = await generateMain(RelativePaths({}));
 
     daemon.handlers['hottie.registered'] = _onHottieRegistered;
     daemon.handlers['hottie.fail'] = _onHottieFail;
@@ -34,7 +33,10 @@ class HottieFrontendNew {
 
     watchDartFiles().forEach(_onFilesChanged).withLogging();
 
-    testAll();
+    final (_, allTests) = await generateMain(null);
+    this.allTests = allTests;
+    _onFilesChanged(null);
+
     _frontend = this;
   }
 
@@ -53,7 +55,7 @@ class HottieFrontendNew {
 
   /// Executes when any dart file changes.
   /// Causes hot reload, which eventually leads to _onIsolateReload being called.
-  Future<void> _onFilesChanged(String changedFile) async {
+  Future<void> _onFilesChanged(String? changedFile) async {
     logger.fine('_onFilesChanged: $changedFile isTesting: $_isTesting');
 
     if (_isTesting) {

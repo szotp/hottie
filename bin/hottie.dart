@@ -1,9 +1,11 @@
 #!/usr/bin/env dart
-// ignore_for_file: avoid_print - printing to user
+// ignore_for_file: avoid_print user interaction
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:args/command_runner.dart';
 import 'package:hottie/src/frontend.dart';
 import 'package:hottie/src/script_change.dart';
 import 'package:hottie/src/utils/logger.dart';
@@ -11,14 +13,8 @@ import 'package:logging/logging.dart';
 
 const String version = '0.0.2';
 
-ArgParser buildParser() {
-  final root = ArgParser()
-    ..addFlag(
-      'help',
-      abbr: 'h',
-      negatable: false,
-      help: 'Print this usage information.',
-    )
+void addGlobalOptions(ArgParser parser) {
+  parser
     ..addOption('loggerLevel', allowed: Level.LEVELS.map((x) => x.name))
     ..addFlag(
       'verbose',
@@ -27,61 +23,53 @@ ArgParser buildParser() {
       help: 'Show additional command output. Shorthand for --loggerLevel ALL',
     )
     ..addFlag('version', negatable: false, help: 'Print the tool version.');
-
-  root.addCommand('run');
-
-  return root;
-}
-
-void printUsage(ArgParser argParser) {
-  print('Usage: dart run hottie <flags> <command> [arguments]');
-  print(argParser.usage);
 }
 
 Future<void> main(List<String> arguments) async {
-  final argParser = buildParser();
-  try {
-    final results = argParser.parse(arguments);
+  await _CommandRunner().run(arguments);
+}
 
-    // Process the parsed arguments.
-    if (results.flag('help')) {
-      printUsage(argParser);
+class _CommandRunner extends CommandRunner<void> {
+  _CommandRunner() : super('hottie', 'Test hot-reloader for flutter') {
+    addGlobalOptions(argParser);
+    addCommand(_RunCommand());
+  }
+
+  @override
+  Future<void> runCommand(ArgResults args) async {
+    if (args.flag('version')) {
+      print('hottie $version');
       return;
     }
-    if (results.flag('version')) {
-      print('hottie version: $version');
-      return;
+
+    final loggerLevel = args.option('loggerLevel');
+    if (loggerLevel != null) {
+      logger.level = Level.LEVELS.firstWhere((x) => x.name == loggerLevel);
     }
 
-    final level = results.option('loggerLevel');
-    if (level != null) {
-      logger.level = Level.LEVELS.where((x) => x.name == level).firstOrNull;
-    }
+    return super.runCommand(args);
+  }
+}
 
-    if (results.flag('verbose')) {
-      logger.level = Level.ALL;
-    }
+class _RunCommand extends Command<void> {
+  @override
+  String get description => 'Watch current directory for tests';
+  @override
+  String get name => 'watch';
 
-    final command = results.command;
+  @override
+  FutureOr<void>? run() async {
+    final args = argResults!;
 
-    if (command != null) {
-      switch (command.name) {
-        case 'run':
-          for (final file in command.rest) {
-            if (!File(file).existsSync()) {
-              logger.shout('$file does not exist');
-              exit(-1);
-            }
-          }
-
-          final frontend = HottieFrontendNew();
-          await frontend.run(RelativePaths(command.rest.toSet()));
+    final files = args.rest;
+    for (final file in files) {
+      if (!File(file).existsSync()) {
+        logger.shout('$file does not exist');
+        exit(-1);
       }
     }
-  } on FormatException catch (e) {
-    // Print usage information if an invalid argument was provided.
-    print(e.message);
-    print('');
-    printUsage(argParser);
+
+    final frontend = HottieFrontendNew();
+    await frontend.run(RelativePaths(files.toSet()));
   }
 }

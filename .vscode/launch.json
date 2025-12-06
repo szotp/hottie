@@ -15,9 +15,9 @@
             },
             "preLaunchTask": "cleanup",
             "args": [
-                "-v",
-                "run",
-                "test/file_2_test.dart"
+                "--loggerLevel",
+                "ALL",
+                "watch"
             ]
         },
         {
