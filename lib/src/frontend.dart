@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:ansicolor/ansicolor.dart';
 import 'package:hottie/hottie_insider.dart';
 import 'package:hottie/src/daemon.dart';
 import 'package:hottie/src/generate_main.dart';
@@ -72,14 +73,13 @@ class HottieFrontendNew {
     _testing = printer.start('Scanning...');
 
     daemon.setEventHandler(hottieReportEventName, (event) {
-      final output = event.params['line'] as String;
-      final lines = output.trim().split('\n');
-      final isStatus = RegExp(r'\d\d:\d\d').matchAsPrefix(output) != null;
+      final line = event.params['line'] as String;
+      final isStatus = RegExp(r'\d\d:\d\d').matchAsPrefix(line) != null;
 
-      if (isStatus && !lines.first.endsWith('[E]')) {
-        _testing?.update(lines.first);
+      if (isStatus && !line.contains('[E]')) {
+        _testing?.update(line);
       } else {
-        printer.write(lines);
+        printer.writeln(line);
       }
     });
 
@@ -93,7 +93,8 @@ class HottieFrontendNew {
         return;
       }
 
-      printer.writeln('Testing ${paths.describe()}');
+      final pen = AnsiPen()..blue(bg: true);
+      printer.writeln(pen('Testing ${paths.describe()}'));
 
       final lastMessage = await callHottieTest(paths);
 

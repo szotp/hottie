@@ -126,7 +126,7 @@ class StdoutProgress {
     _timer?.cancel();
     _timer = null;
 
-    stdout.writeln('\n$finalInfo.');
+    stdout.writeln('\n$finalInfo');
     onFinished();
   }
 

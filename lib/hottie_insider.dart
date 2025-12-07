@@ -42,18 +42,19 @@ Future<String> runTests(Iterable<MapEntry<String, void Function()>> entries, {re
     (error, stackTrace) {},
     zoneSpecification: ZoneSpecification(
       print: (self, parent, zone, line) {
-        final event = {
-          'event': 'hottie.report',
-          'params': {
-            'line': line,
-          },
-        };
+        final trimmed = line.substring(0, line.length - 1);
 
         if (completer1.isCompleted) {
           if (!completer2.isCompleted) {
-            completer2.complete(line.trim());
+            completer2.complete(trimmed);
           }
         } else {
+          final event = {
+            'event': 'hottie.report',
+            'params': {
+              'line': trimmed,
+            },
+          };
           report(jsonEncode([event]));
         }
       },
