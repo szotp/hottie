@@ -31,14 +31,17 @@ class HottieFrontendNew {
       (hottiePath, _) = await generateMain(paths.paths.isNotEmpty ? paths : null);
     }
 
-    daemon.register(HottieRegistered.event, _onHottieRegistered);
-    daemon.register(TestFinished.event, _onTestFinished);
+    daemon.registerEventHandler(HottieRegistered.event, _onHottieRegistered);
+    daemon.registerEventHandler(TestFinished.event, _onTestFinished);
+    daemon.registerKeyHandler('t', (_) => testAll());
     await daemon.start(path: hottiePath);
 
     _scriptChecker = ScriptChangeChecker(daemon.vmService);
     _isInitialized = true;
 
+    hotReloadAutomatically().withLogging();
     watchDartFiles().forEach((_) => runCycle()).withLogging();
+
     _frontend = this;
 
     testAll();
@@ -63,7 +66,7 @@ class HottieFrontendNew {
     }
 
     stdout.writeln('\n');
-    _testing = StdoutProgress('Scanning');
+    _testing = printer.start('Scanning!!!!!');
 
     try {
       await daemon.callHotReload();
@@ -89,6 +92,7 @@ class HottieFrontendNew {
 
   void _onHottieRegistered(HottieRegistered parsed) {
     allTests = RelativePaths(parsed.paths);
+    isolateId = parsed.isolateId;
     if (!_isInitialized) {
       return;
     }
@@ -104,7 +108,7 @@ class HottieFrontendNew {
   }
 
   Future<void> callHottieTest(RelativePaths paths) async {
-    logger.fine('Testing: ${paths.describe()}');
+    logger.finest('Testing: ${paths.describe()}');
 
     final r = await daemon.callServiceExtension(hottieExtensionName, {
       'paths': paths.encode(),

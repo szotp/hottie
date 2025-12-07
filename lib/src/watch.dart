@@ -9,7 +9,7 @@ import 'package:vm_service/vm_service.dart';
 
 /// Starts watching Dart files for changes.
 /// Returns a stream that emits the path of changed Dart files.
-Stream<String> watchDartFiles([List<String> directories = const ['lib', 'test', '../lib']]) {
+Stream<String> watchDartFiles([List<String> directories = const ['lib', 'test']]) {
   logger.fine('Watching: ${Directory.current.path}: $directories');
   final controller = StreamController<String>();
 
@@ -30,19 +30,54 @@ Stream<String> watchDartFiles([List<String> directories = const ['lib', 'test', 
   return controller.stream;
 }
 
-Future<void> hotReloadAutomatically(Stream<void> Function() onReloaded) async {
+/// Gets the package directory from Platform.script.
+/// Only works in debug mode when running with Observatory/VM service enabled.
+String? _getPackageDirectory() {
+  final scriptUri = Platform.script;
+
+  // In debug mode, Platform.script typically looks like:
+  // file:///path/to/package/bin/script.dart or
+  // file:///path/to/package/lib/src/file.dart
+
+  if (scriptUri.scheme != 'file') {
+    return null; // Not a file URI
+  }
+
+  final scriptPath = scriptUri.toFilePath();
+  final file = File(scriptPath);
+
+  // Traverse up the directory tree to find the package root
+  // (directory containing pubspec.yaml)
+  var dir = file.parent;
+  while (dir.path != dir.parent.path) {
+    final pubspec = File('${dir.path}/pubspec.yaml');
+    if (pubspec.existsSync()) {
+      return dir.path;
+    }
+    dir = dir.parent;
+  }
+
+  return null; // Could not find package root
+}
+
+Future<void> hotReloadAutomatically([Stream<void> Function()? onReloaded]) async {
   StreamSubscription<void>? sub;
 
-  sub = onReloaded().listen(null);
+  sub = onReloaded?.call().listen(null);
   final vm = await vmServiceConnect();
 
   if (vm == null) {
     return; // debugging not available
   }
 
+  final packageDir = _getPackageDirectory();
+  if (packageDir == null) {
+    return;
+  }
+
   final isolateId = Service.getIsolateId(isolate.Isolate.current)!;
 
-  watchDartFiles(['bin']).forEach((_) async {
+  watchDartFiles(['$packageDir/bin', '$packageDir/lib']).forEach((_) async {
     final reloaded = await vm.reloadSources(isolateId);
     logger.info('Reloaded: ${reloaded.success}');
   }).withLogging();
@@ -50,7 +85,7 @@ Future<void> hotReloadAutomatically(Stream<void> Function() onReloaded) async {
   vm.onIsolateEvent.forEach((event) {
     if (event.kind == EventKind.kIsolateReload) {
       sub?.cancel().ignore();
-      sub = onReloaded().listen(null);
+      sub = onReloaded?.call().listen(null);
     }
   }).withLogging();
 

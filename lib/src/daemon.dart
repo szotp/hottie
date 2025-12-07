@@ -7,39 +7,9 @@ import 'dart:math';
 
 import 'package:hottie/hottie_insider.dart';
 import 'package:hottie/src/utils/logger.dart';
+import 'package:logging/logging.dart';
 import 'package:vm_service/vm_service.dart';
 import 'package:vm_service/vm_service_io.dart';
-
-class StdoutProgress {
-  StdoutProgress(this._label) {
-    stdout.write('$_label... (0.0s)');
-    _timer = Timer.periodic(const Duration(milliseconds: 100), (_) {
-      assert(_timer != null, '');
-      print();
-    });
-  }
-  final _watch = Stopwatch()..start();
-  Timer? _timer;
-  String _label;
-
-  void print() {
-    final elapsed = (_watch.elapsed.inMilliseconds / 1000).toStringAsFixed(1);
-    stdout.write('\r$_label... (${elapsed}s)');
-  }
-
-  void finish(String finalInfo) {
-    print();
-    _timer?.cancel();
-    _timer = null;
-
-    stdout.writeln('\n$finalInfo.');
-  }
-
-  void update(String newLabel) {
-    _label = newLabel;
-    print();
-  }
-}
 
 /// See https://github.com/flutter/flutter/blob/master/packages/flutter_tools/doc/daemon.md
 class FlutterDaemon {
@@ -50,35 +20,43 @@ class FlutterDaemon {
   final _onReady = Completer<void>();
   (Completer<DaemonResult>, int)? _onResult;
 
-  Map<String, void Function(DaemonEvent)> handlers = {};
+  final Map<String, void Function(DaemonEvent)> _eventHandlers = {};
+  final Map<String, void Function(String)> _onKeyHandlers = {};
 
+  int _nextId = 1;
   void Function(String)? onLine;
-
-  void register<T>(EventHandle<T> handle, void Function(T) handler) {
-    handlers[handle.name] = (event) {
-      final mapped = handle.mapper(event.params);
-      handler(mapped);
-    };
-  }
 
   Future<void> start({required String path}) async {
     try {
       stdin.lineMode = false;
       stdin.echoMode = false;
-      stdin.transform(utf8.decoder).where(_onKey);
+      stdin.transform(utf8.decoder).listen(_onKey);
     } on StdinException {
       // running in debugger
     }
 
-    handlers['app.debugPort'] = _onDebugPort;
-    handlers['app.started'] = _onAppStarted;
+    _eventHandlers['app.debugPort'] = _onDebugPort;
+    _eventHandlers['app.started'] = _onAppStarted;
+    _onKeyHandlers['q'] = (_) => exit(0);
+    _onKeyHandlers['v'] = (_) => logger.toggleVerbosity();
 
-    final progress = StdoutProgress('Launching flutter-tester');
+    final progress = printer.start('Launching flutter-tester');
     process = await Process.start('flutter', ['run', path, '-d', 'flutter-tester', '--no-pub', '--device-connection', 'attached', '--machine']);
     process.stderr.listen(stderr.add);
     process.stdout.transform(utf8.decoder).transform(const LineSplitter()).listen(_onLine);
     await _onReady.future;
     progress.finish('Waiting for changes...');
+  }
+
+  void registerEventHandler<T>(EventHandle<T> handle, void Function(T) handler) {
+    _eventHandlers[handle.name] = (event) {
+      final mapped = handle.mapper(event.params);
+      handler(mapped);
+    };
+  }
+
+  void registerKeyHandler(String key, void Function(String) handler) {
+    _onKeyHandlers[key] = handler;
   }
 
   Future<void> _onLine(String line) async {
@@ -104,7 +82,7 @@ class FlutterDaemon {
         }
 
       case final DaemonEvent event:
-        handlers[event.event]?.call(event);
+        _eventHandlers[event.event]?.call(event);
     }
   }
 
@@ -136,8 +114,6 @@ class FlutterDaemon {
     });
   }
 
-  int _nextId = 1;
-
   Future<DaemonResult> _sendCommand(String name, Map<String, dynamic> params) {
     final id = _nextId++;
     final map = {
@@ -154,16 +130,18 @@ class FlutterDaemon {
     process.stdin.writeln(encoded);
     return completer.future;
   }
+
+  void _onKey(String key) {
+    final handler = _onKeyHandlers[key];
+    logger.info('Key pressed: $key $handler');
+    handler?.call(key);
+  }
 }
 
-bool _onKey(String key) {
-  switch (key) {
-    case 'q':
-      logger.info('Quitting');
-      exit(0);
-    default:
-      logger.info('Unknown key: $key');
-      return false;
+extension on Logger {
+  void toggleVerbosity() {
+    logger.level = logger.level == Level.INFO ? Level.FINEST : Level.INFO;
+    logger.info('Logger level set to ${logger.level}');
   }
 }
 
