@@ -22,11 +22,12 @@ class HottieFrontendNew {
   String? isolateId;
 
   Future<void> run({required RelativePaths paths, String? existingHottiePath}) async {
-    allTests = paths ?? findTestsInCurrentDirectory();
+    allTests = paths.paths.isNotEmpty ? paths : findTestsInCurrentDirectory();
+
     final hottiePath = await _prepareHottiePath(existingHottiePath);
 
-    daemon.registerEventHandler(hottieRegisteredEventName, _onHottieRegistered);
-    daemon.registerKeyHandler('t', (_) => testAll());
+    daemon.setEventHandler(hottieRegisteredEventName, _onHottieRegistered);
+    daemon.setKeyHandler('t', (_) => testAll());
     await daemon.start(path: hottiePath);
 
     _scriptChecker = ScriptChangeChecker(daemon.vmService);
@@ -68,19 +69,18 @@ class HottieFrontendNew {
       return;
     }
 
-    stdout.writeln('\n');
     final onComplete = Completer<String>();
-    _testing = printer.start('Scanning!!!!!');
-    daemon.onLine = (line) {
-      if (line.startsWith('Reloaded')) {
-        return;
-      }
-      if (line.contains('All tests passed!') || line.contains('Some tests failed.')) {
+    _testing = printer.start('Scanning...');
+
+    daemon.setEventHandler(hottieReportEventName, (event) {
+      final line = event.params['line'] as String;
+
+      if (line.contains('All tests passed!') || line.contains('Some tests failed')) {
         onComplete.complete(line);
       } else if (line.isNotEmpty) {
         _testing?.update(line);
       }
-    };
+    });
 
     try {
       await daemon.callHotReload();

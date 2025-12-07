@@ -8,6 +8,11 @@ const _path = '.dart_tool/main_hottie.g.dart';
 
 RelativePaths findTestsInCurrentDirectory() {
   final files = Directory('test').listSync(recursive: true).where((x) => x.path.endsWith('_test.dart')).toList();
+
+  if (files.isEmpty) {
+    logger.warning('No test files found in ${Directory.current}');
+  }
+
   return RelativePaths(files.map((x) => x.path).toSet());
 }
 

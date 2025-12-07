@@ -36,6 +36,7 @@ class FlutterDaemon {
 
     _eventHandlers['app.debugPort'] = _onDebugPort;
     _eventHandlers['app.started'] = _onAppStarted;
+    _eventHandlers['app.stop'] = _onAppStopped;
     _onKeyHandlers['q'] = (_) => exit(0);
     _onKeyHandlers['v'] = (_) => logger.toggleVerbosity();
 
@@ -47,11 +48,11 @@ class FlutterDaemon {
     progress.finish('Waiting for changes...');
   }
 
-  void registerEventHandler(String name, void Function(DaemonEvent) handler) {
+  void setEventHandler(String name, void Function(DaemonEvent) handler) {
     _eventHandlers[name] = handler;
   }
 
-  void registerKeyHandler(String key, void Function(String) handler) {
+  void setKeyHandler(String key, void Function(String) handler) {
     _onKeyHandlers[key] = handler;
   }
 
@@ -89,6 +90,10 @@ class FlutterDaemon {
   void _onAppStarted(DaemonEvent event) {
     appId = event.params['appId'] as String;
     _onReady.complete();
+  }
+
+  void _onAppStopped(DaemonEvent event) {
+    logger.shout('App stopped');
   }
 
   /// Executes once during app start.

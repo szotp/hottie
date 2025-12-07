@@ -13,10 +13,9 @@ dependencies:
   vm_service:
   stack_trace:
   logging:
-  test_api:
-  test:
   ansicolor:
   args: ^2.7.0
+  test: any
 dev_dependencies:
   very_good_analysis: ^10.0.0
 

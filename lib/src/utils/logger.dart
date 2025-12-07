@@ -68,8 +68,18 @@ class ConsoleOutput {
     write([line]);
   }
 
+  final updatingLinesPossible = true;
+
+  void updateLine(String line) {
+    if (updatingLinesPossible) {
+      stdout.write('\r$line');
+    } else {
+      stdout.writeln(line);
+    }
+  }
+
   void write(List<String> lines) {
-    if (_progress != null) {
+    if (_progress != null && updatingLinesPossible) {
       stdout.write('\r');
     }
     lines.forEach(stdout.writeln);
@@ -106,7 +116,7 @@ class StdoutProgress {
 
   void print() {
     final elapsed = (_watch.elapsed.inMilliseconds / 1000).toStringAsFixed(1);
-    stdout.write('\r$_label... (${elapsed}s)');
+    printer.updateLine('$_label... (${elapsed}s)');
   }
 
   void finish(String finalInfo) {
