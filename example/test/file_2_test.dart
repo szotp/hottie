@@ -10,6 +10,7 @@ void main() {
     });
 
     test('simple 2', () async {
+      await Future<void>.delayed(const Duration(seconds: 1));
       expect(1, 1);
     });
 

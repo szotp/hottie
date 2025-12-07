@@ -53,16 +53,26 @@ class ConsoleOutput {
     final trace = Trace.from(record.stackTrace ?? StackTrace.current);
     final location = trace.frames.where((x) => !x.location.contains('logger.dart') && !x.location.contains('matcher')).firstOrNull?.location;
 
-    if (_progress != null) {
-      stdout.writeln();
-    }
-
     final lines = record.message.split('\n');
-    stdout.writeln('$timeString ${level.prefix} ${level(lines.first)} ${_locationPen('at $location ')}');
 
-    for (final line in lines.skip(1)) {
-      stdout.writeln('$_padding ${level(line)}');
+    lines[0] = '$timeString ${level.prefix} ${level(lines.first)} ${_locationPen('at $location ')}';
+
+    for (var i = 1; i < lines.length; i++) {
+      lines[i] = '$_padding ${level(lines[i])}';
     }
+
+    write(lines);
+  }
+
+  void writeln(String line) {
+    write([line]);
+  }
+
+  void write(List<String> lines) {
+    if (_progress != null) {
+      stdout.write('\r');
+    }
+    lines.forEach(stdout.writeln);
   }
 
   StdoutProgress? _progress;

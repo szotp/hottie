@@ -5,7 +5,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:hottie/hottie_insider.dart';
 import 'package:hottie/src/utils/logger.dart';
 import 'package:logging/logging.dart';
 import 'package:vm_service/vm_service.dart';
@@ -48,11 +47,8 @@ class FlutterDaemon {
     progress.finish('Waiting for changes...');
   }
 
-  void registerEventHandler<T>(EventHandle<T> handle, void Function(T) handler) {
-    _eventHandlers[handle.name] = (event) {
-      final mapped = handle.mapper(event.params);
-      handler(mapped);
-    };
+  void registerEventHandler(String name, void Function(DaemonEvent) handler) {
+    _eventHandlers[name] = handler;
   }
 
   void registerKeyHandler(String key, void Function(String) handler) {
@@ -133,7 +129,7 @@ class FlutterDaemon {
 
   void _onKey(String key) {
     final handler = _onKeyHandlers[key];
-    logger.info('Key pressed: $key $handler');
+    logger.finest('Key pressed: $key $handler');
     handler?.call(key);
   }
 }

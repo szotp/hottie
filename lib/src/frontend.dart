@@ -22,104 +22,104 @@ class HottieFrontendNew {
   String? isolateId;
 
   Future<void> run({required RelativePaths paths, String? existingHottiePath}) async {
-    final String hottiePath;
+    allTests = paths ?? findTestsInCurrentDirectory();
+    final hottiePath = await _prepareHottiePath(existingHottiePath);
 
-    if (existingHottiePath != null) {
-      assert(File(existingHottiePath).existsSync(), '$existingHottiePath does not exist');
-      hottiePath = existingHottiePath;
-    } else {
-      (hottiePath, _) = await generateMain(paths.paths.isNotEmpty ? paths : null);
-    }
-
-    daemon.registerEventHandler(HottieRegistered.event, _onHottieRegistered);
-    daemon.registerEventHandler(TestFinished.event, _onTestFinished);
+    daemon.registerEventHandler(hottieRegisteredEventName, _onHottieRegistered);
     daemon.registerKeyHandler('t', (_) => testAll());
     await daemon.start(path: hottiePath);
 
     _scriptChecker = ScriptChangeChecker(daemon.vmService);
     _isInitialized = true;
 
-    hotReloadAutomatically().withLogging();
     watchDartFiles().forEach((_) => runCycle()).withLogging();
 
     _frontend = this;
 
-    testAll();
+    //testAll().withLogging();
+  }
+
+  Future<String> _prepareHottiePath(String? existingHottiePath) async {
+    final String hottiePath;
+    if (existingHottiePath != null) {
+      assert(File(existingHottiePath).existsSync(), '$existingHottiePath does not exist');
+      hottiePath = existingHottiePath;
+    } else {
+      hottiePath = await generateMain(allTests);
+    }
+    return hottiePath;
   }
 
   void dispose() {
     _frontend = null;
   }
 
-  void testAll() {
+  Future<void> testAll() {
     final all = allTests;
     if (all == null) {
       logger.warning('testAll not possible because allTests is null');
     }
 
-    callHottieTest(all).withLogging();
+    return runCycle(all);
   }
 
-  Future<void> runCycle() async {
+  Future<void> runCycle([RelativePaths? forcePaths]) async {
     if (_testing != null) {
       return;
     }
 
     stdout.writeln('\n');
+    final onComplete = Completer<String>();
     _testing = printer.start('Scanning!!!!!');
+    daemon.onLine = (line) {
+      if (line.startsWith('Reloaded')) {
+        return;
+      }
+      if (line.contains('All tests passed!') || line.contains('Some tests failed.')) {
+        onComplete.complete(line);
+      } else if (line.isNotEmpty) {
+        _testing?.update(line);
+      }
+    };
 
     try {
       await daemon.callHotReload();
 
-      final paths = await _scriptChecker.checkLibraries(isolateId!);
+      final paths = forcePaths ?? (await _scriptChecker.checkLibraries(isolateId!));
 
       if (paths.paths.isEmpty) {
         _testing?.finish('Nothing to test');
         return;
       }
 
-      _testing?.update('Testing ${paths.describe()}');
+      printer.writeln('Testing ${paths.describe()}');
 
       await callHottieTest(paths);
 
-      await daemon.callHotReload(fullRestart: true);
+      _testing?.finish(await onComplete.future);
     } catch (error, stackTrace) {
       logger.severe(error, error, stackTrace);
     } finally {
       _testing = null;
+      daemon.onLine = null;
     }
+
+    await daemon.callHotReload(fullRestart: true);
   }
 
-  void _onHottieRegistered(HottieRegistered parsed) {
-    allTests = RelativePaths(parsed.paths);
-    isolateId = parsed.isolateId;
+  void _onHottieRegistered(DaemonEvent parsed) {
+    isolateId = parsed.params['isolateId'] as String;
     if (!_isInitialized) {
       return;
     }
     _scriptChecker.checkLibraries(isolateId!).withLogging();
   }
 
-  void _onTestFinished(TestFinished parsed) {
-    if (parsed.error != null) {
-      logger.warning('Test "${parsed.name}" failed\n${parsed.error}', null, parsed.stackTrace);
-    }
-
-    _testing?.update('');
-  }
-
   Future<void> callHottieTest(RelativePaths paths) async {
     logger.finest('Testing: ${paths.describe()}');
 
-    final r = await daemon.callServiceExtension(hottieExtensionName, {
+    await daemon.callServiceExtension(hottieExtensionName, {
       'paths': paths.encode(),
     });
-
-    final parsed = TestResults.fromJson(r.result);
-
-    if (parsed.failed == 0) {
-      _testing?.finish('${parsed.passed} tests passed.');
-    } else {
-      _testing?.finish('${parsed.failed} tests failed');
-    }
   }
 }

@@ -6,16 +6,12 @@ import 'package:hottie/src/utils/logger.dart';
 
 const _path = '.dart_tool/main_hottie.g.dart';
 
-Future<(RelativePath, RelativePaths)> generateMain(RelativePaths? requestedPaths) async {
-  final RelativePaths testPaths;
+RelativePaths findTestsInCurrentDirectory() {
+  final files = Directory('test').listSync(recursive: true).where((x) => x.path.endsWith('_test.dart')).toList();
+  return RelativePaths(files.map((x) => x.path).toSet());
+}
 
-  if (requestedPaths != null) {
-    testPaths = requestedPaths;
-  } else {
-    final files = Directory('test').listSync(recursive: true).where((x) => x.path.endsWith('_test.dart')).toList();
-    testPaths = RelativePaths(files.map((x) => x.path).toSet());
-  }
-
+Future<RelativePath> generateMain(RelativePaths testPaths) async {
   final resolved = await Isolate.resolvePackageUri(Uri.parse('package:hottie/hottie_insider.dart'));
 
   final buffer = StringBuffer();
@@ -38,5 +34,5 @@ Future<(RelativePath, RelativePaths)> generateMain(RelativePaths? requestedPaths
 
   File(_path).writeAsStringSync(buffer.toString());
   logger.fine('Generated $_path with ${testPaths.describe()}');
-  return (_path, testPaths);
+  return _path;
 }

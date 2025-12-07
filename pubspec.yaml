@@ -3,6 +3,9 @@ description: "Runs tests automatically on file changes."
 publish_to: 'none'
 version: 0.2.0-dev.2
 
+workspace:
+  - example
+
 environment:
   sdk: ^3.5.0
 
