@@ -69,16 +69,17 @@ class HottieFrontendNew {
       return;
     }
 
-    final onComplete = Completer<String>();
     _testing = printer.start('Scanning...');
 
     daemon.setEventHandler(hottieReportEventName, (event) {
-      final line = event.params['line'] as String;
+      final output = event.params['line'] as String;
+      final lines = output.trim().split('\n');
+      final isStatus = RegExp(r'\d\d:\d\d').matchAsPrefix(output) != null;
 
-      if (line.contains('All tests passed!') || line.contains('Some tests failed')) {
-        onComplete.complete(line);
-      } else if (line.isNotEmpty) {
-        _testing?.update(line);
+      if (isStatus && !lines.first.endsWith('[E]')) {
+        _testing?.update(lines.first);
+      } else {
+        printer.write(lines);
       }
     });
 
@@ -94,9 +95,9 @@ class HottieFrontendNew {
 
       printer.writeln('Testing ${paths.describe()}');
 
-      await callHottieTest(paths);
+      final lastMessage = await callHottieTest(paths);
 
-      _testing?.finish(await onComplete.future);
+      _testing?.finish(lastMessage);
     } catch (error, stackTrace) {
       logger.severe(error, error, stackTrace);
     } finally {
@@ -115,11 +116,13 @@ class HottieFrontendNew {
     _scriptChecker.checkLibraries(isolateId!).withLogging();
   }
 
-  Future<void> callHottieTest(RelativePaths paths) async {
+  Future<String> callHottieTest(RelativePaths paths) async {
     logger.finest('Testing: ${paths.describe()}');
 
-    await daemon.callServiceExtension(hottieExtensionName, {
+    final payload = await daemon.callServiceExtension(hottieExtensionName, {
       'paths': paths.encode(),
     });
+
+    return payload.result['result'] as String;
   }
 }

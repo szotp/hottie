@@ -1,6 +1,7 @@
 import 'dart:isolate';
 
 import 'package:hottie/hottie_insider.dart';
+import 'package:hottie/src/daemon.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -41,6 +42,18 @@ Future<bool> _runIsolated({int expected = 1, bool? skip, bool declare = true}) {
       },
     };
 
-    return runTests(map.entries, report: (_) {});
+    final collector = _Collector();
+    final lastMessage = await runTests(map.entries, report: collector.add);
+    return !lastMessage.contains('failed');
   });
+}
+
+class _Collector {
+  final List<String> lines = [];
+
+  void add(String eventJson) {
+    final event = DaemonMessage.parse(eventJson)! as DaemonEvent;
+    final line = event.params['line'] as String;
+    lines.add(line);
+  }
 }

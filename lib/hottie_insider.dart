@@ -18,23 +18,26 @@ Future<void> hottie(TestMapFactory tests) async {
   registerExtension(hottieExtensionName, (_, args) async {
     final allowed = (jsonDecode(args['paths']!) as List).toSet().cast<String>();
     final entries = tests().entries.where((x) => allowed.contains(x.key));
-    final ok = await runTests(entries, report: stdout.writeln);
-    return ServiceExtensionResponse.result('{"result":$ok}');
+    final lastLine = await runTests(entries, report: stdout.writeln);
+    final json = {
+      'result': lastLine,
+    };
+    return ServiceExtensionResponse.result(jsonEncode(json));
   });
 
   final isolateId = Service.getIsolateId(Isolate.current);
   print('[{"event":"$hottieRegisteredEventName","params":{"isolateId":"$isolateId"}}]');
 }
 
-Future<bool> runTests(Iterable<MapEntry<String, void Function()>> entries, {required void Function(String) report}) async {
-  final completer = Completer<bool>();
-  final value = await runZonedGuarded(
+Future<String> runTests(Iterable<MapEntry<String, void Function()>> entries, {required void Function(String) report}) async {
+  final completer1 = Completer<void>();
+  final completer2 = Completer<String>();
+  await runZonedGuarded(
     () async {
       for (final test in entries) {
         group(test.key, test.value);
       }
-      tearDownAll(() {});
-      return completer.future;
+      tearDownAll(completer1.complete);
     },
     (error, stackTrace) {},
     zoneSpecification: ZoneSpecification(
@@ -45,16 +48,17 @@ Future<bool> runTests(Iterable<MapEntry<String, void Function()>> entries, {requ
             'line': line,
           },
         };
-        report(jsonEncode([event]));
 
-        if (line.contains('All tests passed!') || line.contains('All tests skipped.') || line.contains('No tests ran.')) {
-          completer.complete(true);
-        } else if (line.contains('Some tests failed.')) {
-          completer.complete(false);
+        if (completer1.isCompleted) {
+          if (!completer2.isCompleted) {
+            completer2.complete(line.trim());
+          }
+        } else {
+          report(jsonEncode([event]));
         }
       },
     ),
   );
 
-  return value ?? false;
+  return completer2.future;
 }

@@ -8,6 +8,8 @@ import 'package:stack_trace/stack_trace.dart';
 const hottieReloadSpell = '[HOTTIE:RELOAD]';
 const hottieFromScriptEnvironmentKey = 'HOTTIE_FROM_SCRIPT';
 
+const _ansiReplaceLine = '\r\x1b[K';
+
 final printer = ConsoleOutput();
 final Logger logger = printer.create();
 
@@ -72,7 +74,7 @@ class ConsoleOutput {
 
   void updateLine(String line) {
     if (updatingLinesPossible) {
-      stdout.write('\r$line');
+      stdout.write('$_ansiReplaceLine$line');
     } else {
       stdout.writeln(line);
     }
@@ -80,7 +82,7 @@ class ConsoleOutput {
 
   void write(List<String> lines) {
     if (_progress != null && updatingLinesPossible) {
-      stdout.write('\r');
+      stdout.write(_ansiReplaceLine);
     }
     lines.forEach(stdout.writeln);
   }
