@@ -74,7 +74,7 @@ class HottieFrontendNew {
 
     daemon.setEventHandler(hottieReportEventName, (event) {
       final line = event.params['line'] as String;
-      final isStatus = RegExp(r'\d\d:\d\d').matchAsPrefix(line) != null;
+      final isStatus = _testStatusRegex.matchAsPrefix(line) != null;
 
       if (isStatus && !line.contains('[E]')) {
         _testing?.update(line);
@@ -127,3 +127,5 @@ class HottieFrontendNew {
     return payload.result['result'] as String;
   }
 }
+
+final _testStatusRegex = RegExp(r'\d\d:\d\d');
