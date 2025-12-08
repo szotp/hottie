@@ -6,7 +6,7 @@
         {
             "label": "cleanup",
             "type": "shell",
-            "command": "pkill -f 'dart development-service' || true"
+            "command": "./.vscode/cleanup.sh"
         }
     ]
 }
