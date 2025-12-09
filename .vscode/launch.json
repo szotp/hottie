@@ -9,17 +9,12 @@
             "name": "example",
             "request": "launch",
             "type": "dart",
-            "program": "../bin/hottie.dart",
-            "cwd": "example",
+            "program": "bin/hottie.dart",
             "env": {
-                "PATH": "${env:PATH}:${workspaceFolder}/.fvm/flutter_sdk/bin"
+                "FLUTTER_ROOT": "${workspaceFolder}/.fvm/flutter_sdk"
             },
-            "preLaunchTask": "cleanup",
             "args": [
-                "--loggerLevel",
-                "INFO",
-                "watch",
-                "test/file_2_test.dart",
+                "test",
             ]
         },
         {

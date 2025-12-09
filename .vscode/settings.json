@@ -2,7 +2,7 @@
   "dart.flutterAdditionalArgs": [
     "--show-test-device"
   ],
-  "dart.flutterSdkPath": ".fvm/versions/3.38.3",
+  "dart.flutterSdkPath": ".fvm/versions/3.32.8",
   "dart.lineLength": 160,
-  "dart.showDartDeveloperLogs": false,
+  "dart.showDartDeveloperLogs": false
 }

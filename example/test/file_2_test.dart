@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 const value = 1;
 
 void main() {
+  print('COOL 222');
   group('group 2', () {
     testWidgets('testWidgets 2', (tester) async {
       const text = Text('Hello');

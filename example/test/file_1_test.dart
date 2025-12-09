@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-const value = 1;
+const value = 123;
 
 void main() {
   group('group 1', () {

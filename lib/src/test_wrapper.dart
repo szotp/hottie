@@ -5,27 +5,30 @@
 // ignore_for_file: implementation_imports because
 
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter_tools/src/test/test_wrapper.dart';
-import 'package:hottie/src/utils/logger.dart';
+import 'package:hottie/src/watch.dart';
 import 'package:test_core/src/executable.dart' as test;
 import 'package:test_core/src/platform.dart' as test_core;
 import 'package:test_core/src/platform.dart';
 
 export 'package:test_api/backend.dart' show Runtime;
 
-class MyTestWrapper implements TestWrapper {
-  const MyTestWrapper();
+class HottieTestWrapper implements TestWrapper {
+  const HottieTestWrapper();
 
   @override
   Future<void> main(List<String> args) async {
-    stdin.lineMode = false;
-    logger.info('waiting for key');
-    await for (final _ in stdin) {
-      printer.resetStopwatch();
-      await test.main(args.sublist(0, 3));
-      logger.info('waiting for key');
+    final testFiles = args.where((x) => x.endsWith('.dart')).toList();
+    final stream = watchDartFiles();
+    print('Watching...');
+
+    await for (final file in stream) {
+      final matchingFile = testFiles.where((x) => x.contains(file)).firstOrNull;
+
+      if (matchingFile != null) {
+        await test.main([matchingFile]);
+      }
     }
   }
 
@@ -36,7 +39,7 @@ class MyTestWrapper implements TestWrapper {
   ) {
     test_core.registerPlatformPlugin(runtimes, () async {
       final plugin = await platforms();
-      return _MyPlugin(plugin);
+      return plugin; //_MyPlugin(plugin);
     });
   }
 }

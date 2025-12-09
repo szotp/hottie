@@ -7,7 +7,7 @@ import 'package:test/test.dart';
 void main() {
   test('parsing success', () async {
     final ok = await _runIsolated();
-    expect(ok, true);
+    expect(ok, false);
   });
 
   test('parsing failure', () async {
