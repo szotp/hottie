@@ -17,7 +17,7 @@ dependencies:
   args: ^2.7.0
   test: any
 dev_dependencies:
-  very_good_analysis: ^10.0.0
+  very_good_analysis:
 
 executables:
   hottie:
