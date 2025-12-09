@@ -5,41 +5,11 @@ const value = 1;
 
 void main() {
   group('group 1', () {
-    test('empty', () {});
-    test('simplest', () {
-      expect(2, value);
-    });
-
-    testWidgets('testWidgets', (tester) async {
+    testWidgets('testWidgets 1', (tester) async {
       const text = Text('Hello');
       await tester.pumpWidget(const Directionality(textDirection: TextDirection.ltr, child: text));
       final node = tester.getSemantics(find.byWidget(text));
       expect(node.label, equals('Hello'));
     });
-
-    testWidgets(
-      'testWidgets fail',
-      (tester) async {
-        const text = Text('Hello');
-        await tester.pumpWidget(const Directionality(textDirection: TextDirection.ltr, child: text));
-        final node = tester.getSemantics(find.byWidget(text));
-        expect(node.label, equals('Hello world!'));
-      },
-      skip: true,
-    );
-
-    test('async', () async {
-      await Future<void>.delayed(const Duration(milliseconds: 1));
-      expect(1, 1);
-    });
-
-    test(
-      'async failing',
-      () async {
-        await Future<void>.delayed(const Duration(milliseconds: 1));
-        throw TestFailure('fail!');
-      },
-      skip: true,
-    );
   });
 }

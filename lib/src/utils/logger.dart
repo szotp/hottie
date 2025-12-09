@@ -29,9 +29,13 @@ class ConsoleOutput {
     return logger;
   }
 
-  final _startTime = DateTime.now();
+  var _startTime = DateTime.now();
   final _timePen = AnsiPen()..gray(level: 0.5);
   final _locationPen = AnsiPen()..gray(level: 0.95);
+
+  void resetStopwatch() {
+    _startTime = DateTime.now();
+  }
 
   final Map<Level, _Style> _levels = {
     Level.FINEST: _Style('F '),

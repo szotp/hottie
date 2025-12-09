@@ -2,12 +2,14 @@
 // ignore_for_file: avoid_print user interaction
 
 import 'dart:async';
-import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
-import 'package:hottie/src/frontend.dart';
-import 'package:hottie/src/script_change.dart';
+import 'package:flutter_tools/runner.dart' as flutter;
+import 'package:flutter_tools/src/cache.dart';
+import 'package:flutter_tools/src/commands/test.dart';
+import 'package:flutter_tools/src/globals.dart' as globals;
+import 'package:hottie/src/my_wrapper.dart';
 import 'package:hottie/src/utils/logger.dart';
 import 'package:logging/logging.dart';
 
@@ -59,17 +61,12 @@ class _RunCommand extends Command<void> {
 
   @override
   FutureOr<void>? run() async {
-    final args = argResults!;
-
-    final files = args.rest;
-    for (final file in files) {
-      if (!File(file).existsSync()) {
-        logger.shout('$file does not exist');
-        exit(-1);
-      }
-    }
-
-    final frontend = HottieFrontendNew();
-    await frontend.run(paths: RelativePaths(files.toSet()));
+    Cache.flutterRoot = '/Users/pawelszot/Development/hottie/.fvm/flutter_sdk';
+    await flutter.run(
+      ['test', '--no-pub', '-v'],
+      verbose: true,
+      () => [TestCommand(testWrapper: const MyTestWrapper())],
+      shutdownHooks: globals.shutdownHooks,
+    );
   }
 }

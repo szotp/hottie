@@ -1,31 +1,15 @@
-import 'dart:isolate';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
 
-import 'package:example/calculator.dart';
-import 'package:test/test.dart';
-
-const value = 2;
+const value = 1;
 
 void main() {
-  group('2', () {
-    test('simple 1', () async {
-      expect(1, value);
-    });
-
-    test('simple 2', () async {
-      expect(1, 1);
-    });
-
-    test('simple 3', () async {
-      expect(1, 1);
-    });
-
-    test('simple 4', () async {
-      expect(calculate(0, 1), 1);
-    });
-
-    test('isolate', () async {
-      final x = await Isolate.run(() => 1);
-      expect(x, 1);
+  group('group 2', () {
+    testWidgets('testWidgets 2', (tester) async {
+      const text = Text('Hello');
+      await tester.pumpWidget(const Directionality(textDirection: TextDirection.ltr, child: text));
+      final node = tester.getSemantics(find.byWidget(text));
+      expect(node.label, equals('Hello'));
     });
   });
 }
