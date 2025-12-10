@@ -41,7 +41,14 @@ class FlutterDaemon {
     _onKeyHandlers['v'] = (_) => logger.toggleVerbosity();
 
     final progress = printer.start('Launching flutter-tester');
-    process = await Process.start('flutter', ['run', path, '-d', 'flutter-tester', '--no-pub', '--device-connection', 'attached', '--machine']);
+    process = await Process.start(
+      'flutter',
+      ['run', path, '-d', 'flutter-tester', '--no-pub', '--device-connection', 'attached', '--machine'],
+      environment: {
+        'UNIT_TEST_ASSETS': '/Users/pawel.szot/Projekty/olxeu-atlas-ios/libraries/olxeu_shared_flutter/packages/features/user_profile/build/unit_test_assets',
+        'APP_NAME': 'user_profile'
+      },
+    );
     process.stderr.listen(stderr.add);
     process.stdout.transform(utf8.decoder).transform(const LineSplitter()).listen(_onLine);
     await _onReady.future;

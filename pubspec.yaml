@@ -18,6 +18,8 @@ dependencies:
   test: any
 dev_dependencies:
   very_good_analysis:
+  flutter_test:
+    sdk: flutter
 
 executables:
   hottie:

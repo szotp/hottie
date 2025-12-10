@@ -11,3 +11,6 @@ dependencies:
     sdk: flutter
   test: any
   
+flutter:
+  assets:
+    - assets/asset.txt

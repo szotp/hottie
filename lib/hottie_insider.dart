@@ -6,18 +6,23 @@ import 'dart:developer';
 import 'dart:io';
 import 'dart:isolate';
 
-import 'package:test/test.dart';
+// ignore: depend_on_referenced_packages x
+import 'package:flutter_test/flutter_test.dart';
 
 typedef TestMap = Map<String, void Function()>;
 typedef TestMapFactory = TestMap Function();
-const String hottieExtensionName = 'ext.hottie.test';
-const String hottieRegisteredEventName = 'hottie.registered';
-const String hottieReportEventName = 'hottie.report';
+const String _hottieExtensionName = 'ext.hottie.test';
+const String _hottieRegisteredEventName = 'hottie.registered';
+const String _hottieReportEventName = 'hottie.report';
 
 Future<void> hottie(TestMapFactory tests) async {
-  registerExtension(hottieExtensionName, (_, args) async {
+  registerExtension(_hottieExtensionName, (_, args) async {
     final allowed = (jsonDecode(args['paths']!) as List).toSet().cast<String>();
+
     final entries = tests().entries.where((x) => allowed.contains(x.key));
+
+    AutomatedTestWidgetsFlutterBinding.ensureInitialized();
+
     final lastLine = await runTests(entries, report: stdout.writeln);
     final json = {
       'result': lastLine,
@@ -26,7 +31,7 @@ Future<void> hottie(TestMapFactory tests) async {
   });
 
   final isolateId = Service.getIsolateId(Isolate.current);
-  print('[{"event":"$hottieRegisteredEventName","params":{"isolateId":"$isolateId"}}]');
+  print('[{"event":"$_hottieRegisteredEventName","params":{"isolateId":"$isolateId"}}]');
 }
 
 Future<String> runTests(Iterable<MapEntry<String, void Function()>> entries, {required void Function(String) report}) async {
@@ -35,11 +40,15 @@ Future<String> runTests(Iterable<MapEntry<String, void Function()>> entries, {re
   await runZonedGuarded(
     () async {
       for (final test in entries) {
+        print('XXX ${test.key} XXXX');
         group(test.key, test.value);
       }
       tearDownAll(completer1.complete);
     },
-    (error, stackTrace) {},
+    (error, stackTrace) {
+      stdout.writeln(error);
+      stdout.writeln(stackTrace);
+    },
     zoneSpecification: ZoneSpecification(
       print: (self, parent, zone, line) {
         final trimmed = line.substring(0, line.length - 1);
@@ -50,7 +59,7 @@ Future<String> runTests(Iterable<MapEntry<String, void Function()>> entries, {re
           }
         } else {
           final event = {
-            'event': 'hottie.report',
+            'event': _hottieReportEventName,
             'params': {
               'line': trimmed,
             },

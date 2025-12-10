@@ -4,7 +4,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:ansicolor/ansicolor.dart';
-import 'package:hottie/hottie_insider.dart';
 import 'package:hottie/src/daemon.dart';
 import 'package:hottie/src/generate_main.dart';
 import 'package:hottie/src/script_change.dart';
@@ -13,6 +12,9 @@ import 'package:hottie/src/watch.dart';
 
 // ignore: unused_element --- only for debug console
 HottieFrontendNew? _frontend;
+const String _hottieExtensionName = 'ext.hottie.test';
+const String _hottieRegisteredEventName = 'hottie.registered';
+const String _hottieReportEventName = 'hottie.report';
 
 class HottieFrontendNew {
   final FlutterDaemon daemon = FlutterDaemon();
@@ -27,7 +29,7 @@ class HottieFrontendNew {
 
     final hottiePath = await _prepareHottiePath(existingHottiePath);
 
-    daemon.setEventHandler(hottieRegisteredEventName, _onHottieRegistered);
+    daemon.setEventHandler(_hottieRegisteredEventName, _onHottieRegistered);
     daemon.setKeyHandler('t', (_) => testAll());
     await daemon.start(path: hottiePath);
 
@@ -72,7 +74,7 @@ class HottieFrontendNew {
 
     _testing = printer.start('Scanning...');
 
-    daemon.setEventHandler(hottieReportEventName, (event) {
+    daemon.setEventHandler(_hottieReportEventName, (event) {
       final line = event.params['line'] as String;
       final isStatus = _testStatusRegex.matchAsPrefix(line) != null;
 
@@ -120,7 +122,7 @@ class HottieFrontendNew {
   Future<String> callHottieTest(RelativePaths paths) async {
     logger.finest('Testing: ${paths.describe()}');
 
-    final payload = await daemon.callServiceExtension(hottieExtensionName, {
+    final payload = await daemon.callServiceExtension(_hottieExtensionName, {
       'paths': paths.encode(),
     });
 
