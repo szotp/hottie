@@ -6,69 +6,60 @@ import 'dart:developer';
 import 'dart:io';
 import 'dart:isolate';
 
-// ignore: depend_on_referenced_packages x
-import 'package:flutter_test/flutter_test.dart';
-
 typedef TestMap = Map<String, void Function()>;
-typedef TestMapFactory = TestMap Function();
+typedef OnComplete = void Function();
+typedef TestMapFactory = TestMap Function(OnComplete);
 const String _hottieExtensionName = 'ext.hottie.test';
-const String _hottieRegisteredEventName = 'hottie.registered';
-const String _hottieReportEventName = 'hottie.report';
+const String _eventHottieRegistered = 'hottie.registered';
+const String _eventHottieUpdate = 'hottie.registered';
 
 Future<void> hottie(TestMapFactory tests) async {
   registerExtension(_hottieExtensionName, (_, args) async {
     final allowed = (jsonDecode(args['paths']!) as List).toSet().cast<String>();
-
-    final entries = tests().entries.where((x) => allowed.contains(x.key));
-
-    AutomatedTestWidgetsFlutterBinding.ensureInitialized();
-
-    final lastLine = await runTests(entries, report: stdout.writeln);
-    final json = {
-      'result': lastLine,
-    };
-    return ServiceExtensionResponse.result(jsonEncode(json));
+    final status = await runTests(tests, allowed);
+    return ServiceExtensionResponse.result(jsonEncode({'status': status}));
   });
 
   final isolateId = Service.getIsolateId(Isolate.current);
-  print('[{"event":"$_hottieRegisteredEventName","params":{"isolateId":"$isolateId"}}]');
+  _sendEvent(_eventHottieRegistered, {'isolateId': isolateId});
 }
 
-Future<String> runTests(Iterable<MapEntry<String, void Function()>> entries, {required void Function(String) report}) async {
-  final completer1 = Completer<void>();
-  final completer2 = Completer<String>();
-  await runZonedGuarded(
-    () async {
-      for (final test in entries) {
-        print('XXX ${test.key} XXXX');
-        group(test.key, test.value);
-      }
-      tearDownAll(completer1.complete);
-    },
-    (error, stackTrace) {
-      stdout.writeln(error);
-      stdout.writeln(stackTrace);
-    },
-    zoneSpecification: ZoneSpecification(
-      print: (self, parent, zone, line) {
-        final trimmed = line.substring(0, line.length - 1);
+Future<String> runTests(TestMapFactory tests, Set<String> allowed) async {
+  final completer = Completer<void>();
+  final statusCompleter = Completer<String>();
+  final entries = tests(completer.complete).entries.where((x) => allowed.contains(x.key) || x.key == 'tearDownAll').toList();
 
-        if (completer1.isCompleted) {
-          if (!completer2.isCompleted) {
-            completer2.complete(trimmed);
-          }
+  if (entries.length == 1) {
+    return 'No tests ran';
+  }
+
+  runZonedGuarded(() {
+    for (final test in entries) {
+      test.value();
+    }
+  }, (error, stackTrace) {
+    stdout.writeln(error);
+    stdout.writeln(stackTrace);
+  }, zoneSpecification: ZoneSpecification(
+    print: (self, parent, zone, text) {
+      if (completer.isCompleted) {
+        if (!statusCompleter.isCompleted) {
+          statusCompleter.complete(text);
         } else {
-          final event = {
-            'event': _hottieReportEventName,
-            'params': {
-              'line': trimmed,
-            },
-          };
-          report(jsonEncode([event]));
+          stdout.writeln(text);
         }
-      },
-    ),
-  );
+      } else {
+        _sendEvent(_eventHottieUpdate, {'text': text});
+      }
+    },
+  ));
 
-  return completer2.future;
+  await completer.future;
+  return statusCompleter.future;
+}
+
+void _sendEvent(String name, Map<String, dynamic> params) {
+  stdout.writeln(jsonEncode([
+    {'event': name, 'params': params}
+  ]));
 }

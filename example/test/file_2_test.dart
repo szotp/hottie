@@ -3,7 +3,7 @@ import 'dart:isolate';
 import 'package:example/calculator.dart';
 import 'package:test/test.dart';
 
-const value = 1;
+const value = 5;
 
 void main() {
   group('2', () {

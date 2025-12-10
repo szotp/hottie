@@ -121,12 +121,17 @@ class StdoutProgress {
     printer.updateLine('$_label... (${elapsed}s)');
   }
 
-  void finish(String finalInfo) {
+  void finish(String? finalInfo) {
     print();
     _timer?.cancel();
     _timer = null;
 
-    stdout.writeln('\n$finalInfo');
+    if (finalInfo != null) {
+      stdout.writeln('\n$finalInfo');
+    } else {
+      stdout.writeln(_label);
+    }
+
     onFinished();
   }
 

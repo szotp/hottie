@@ -23,7 +23,6 @@ class FlutterDaemon {
   final Map<String, void Function(String)> _onKeyHandlers = {};
 
   int _nextId = 1;
-  void Function(String)? onLine;
 
   Future<void> start({required String path}) async {
     try {
@@ -41,13 +40,13 @@ class FlutterDaemon {
     _onKeyHandlers['v'] = (_) => logger.toggleVerbosity();
 
     final progress = printer.start('Launching flutter-tester');
+    final currentPath = Directory.current.path;
+    final appName = Uri.file(currentPath).pathSegments.last;
+
     process = await Process.start(
       'flutter',
       ['run', path, '-d', 'flutter-tester', '--no-pub', '--device-connection', 'attached', '--machine'],
-      environment: {
-        'UNIT_TEST_ASSETS': '/Users/pawel.szot/Projekty/olxeu-atlas-ios/libraries/olxeu_shared_flutter/packages/features/user_profile/build/unit_test_assets',
-        'APP_NAME': 'user_profile'
-      },
+      environment: {'UNIT_TEST_ASSETS': currentPath, 'APP_NAME': appName},
     );
     process.stderr.listen(stderr.add);
     process.stdout.transform(utf8.decoder).transform(const LineSplitter()).listen(_onLine);
@@ -91,7 +90,7 @@ class FlutterDaemon {
   }
 
   void _onRegularText(String line) {
-    onLine?.call(line);
+    printer.writeln(line);
   }
 
   void _onAppStarted(DaemonEvent event) {

@@ -28,6 +28,8 @@ extension type RelativePaths(Set<RelativePath> paths) {
     return RelativePaths(testPaths);
   }
 
+  static final empty = RelativePaths(const {});
+
   List<Uri> get uris => paths.map((x) => Uri.file(File(x).absolute.path)).toList();
 
   String encode() => jsonEncode(paths.toList());

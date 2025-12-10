@@ -1,61 +1,40 @@
 #!/usr/bin/env dart
 
 import 'dart:async';
-import 'dart:io';
 
-import 'package:ansicolor/ansicolor.dart';
 import 'package:hottie/src/daemon.dart';
 import 'package:hottie/src/generate_main.dart';
 import 'package:hottie/src/script_change.dart';
 import 'package:hottie/src/utils/logger.dart';
 import 'package:hottie/src/watch.dart';
 
-// ignore: unused_element --- only for debug console
-HottieFrontendNew? _frontend;
 const String _hottieExtensionName = 'ext.hottie.test';
-const String _hottieRegisteredEventName = 'hottie.registered';
-const String _hottieReportEventName = 'hottie.report';
+const String _eventHottieRegistered = 'hottie.registered';
+const String _eventHottieUpdate = 'hottie.registered';
 
 class HottieFrontendNew {
   final FlutterDaemon daemon = FlutterDaemon();
   late RelativePaths allTests;
   late final ScriptChangeChecker _scriptChecker;
   bool _isInitialized = false;
-  StdoutProgress? _testing;
+  bool _testing = false;
   String? isolateId;
 
   Future<void> run({required RelativePaths paths, String? existingHottiePath}) async {
     allTests = paths.paths.isNotEmpty ? paths : findTestsInCurrentDirectory();
 
-    final hottiePath = await _prepareHottiePath(existingHottiePath);
+    final hottiePath = await generateMain(RelativePaths.empty);
 
-    daemon.setEventHandler(_hottieRegisteredEventName, _onHottieRegistered);
-    daemon.setKeyHandler('t', (_) => testAll());
+    daemon.setEventHandler(_eventHottieRegistered, _onHottieRegistered);
     await daemon.start(path: hottiePath);
 
     _scriptChecker = ScriptChangeChecker(daemon.vmService);
+
+    await generateMain(allTests);
+    await daemon.callHotReload();
     _isInitialized = true;
-
     watchDartFiles().forEach((_) => runCycle()).withLogging();
-
-    _frontend = this;
-
-    //testAll().withLogging();
-  }
-
-  Future<String> _prepareHottiePath(String? existingHottiePath) async {
-    final String hottiePath;
-    if (existingHottiePath != null) {
-      assert(File(existingHottiePath).existsSync(), '$existingHottiePath does not exist');
-      hottiePath = existingHottiePath;
-    } else {
-      hottiePath = await generateMain(allTests);
-    }
-    return hottiePath;
-  }
-
-  void dispose() {
-    _frontend = null;
+    daemon.setKeyHandler('t', (_) => testAll());
   }
 
   Future<void> testAll() {
@@ -68,47 +47,32 @@ class HottieFrontendNew {
   }
 
   Future<void> runCycle([RelativePaths? forcePaths]) async {
-    if (_testing != null) {
+    if (_testing) {
+      logger.warning('Tests still running.');
       return;
     }
 
-    _testing = printer.start('Scanning...');
-
-    daemon.setEventHandler(_hottieReportEventName, (event) {
-      final line = event.params['line'] as String;
-      final isStatus = _testStatusRegex.matchAsPrefix(line) != null;
-
-      if (isStatus && !line.contains('[E]')) {
-        _testing?.update(line);
-      } else {
-        printer.writeln(line);
-      }
-    });
+    final progress = printer.start('Testing...');
 
     try {
-      await daemon.callHotReload();
+      _testing = true;
+      daemon.setEventHandler(_eventHottieUpdate, (event) {
+        final text = event.params['text'] as String;
+        if (_progressPattern.matchAsPrefix(text) != null && !text.contains('[E]')) {
+          progress.update(text);
+        } else {
+          printer.writeln(text);
+        }
+      });
 
       final paths = forcePaths ?? (await _scriptChecker.checkLibraries(isolateId!));
-
-      if (paths.paths.isEmpty) {
-        _testing?.finish('Nothing to test');
-        return;
-      }
-
-      final pen = AnsiPen()..blue(bg: true);
-      printer.writeln(pen('Testing ${paths.describe()}'));
-
-      final lastMessage = await callHottieTest(paths);
-
-      _testing?.finish(lastMessage);
-    } catch (error, stackTrace) {
-      logger.severe(error, error, stackTrace);
+      await callHottieTest(paths);
+      daemon.setEventHandler(_eventHottieUpdate, (_) {});
+      progress.finish('Tests finished');
+      await daemon.callHotReload(fullRestart: true);
     } finally {
-      _testing = null;
-      daemon.onLine = null;
+      _testing = false;
     }
-
-    await daemon.callHotReload(fullRestart: true);
   }
 
   void _onHottieRegistered(DaemonEvent parsed) {
@@ -122,12 +86,11 @@ class HottieFrontendNew {
   Future<String> callHottieTest(RelativePaths paths) async {
     logger.finest('Testing: ${paths.describe()}');
 
-    final payload = await daemon.callServiceExtension(_hottieExtensionName, {
+    final result = await daemon.callServiceExtension(_hottieExtensionName, {
       'paths': paths.encode(),
     });
-
-    return payload.result['result'] as String;
+    return result.result['status'] as String;
   }
 }
 
-final _testStatusRegex = RegExp(r'\d\d:\d\d');
+final _progressPattern = RegExp(r'\d\d:\d\d');

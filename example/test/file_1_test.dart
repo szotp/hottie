@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-const value = 2;
+const value = 12;
 
 void main() {
   test('empty', () {});
@@ -48,6 +48,6 @@ void main() {
       final asset = await rootBundle.loadString('assets/asset.txt');
       expect(asset, 'hello');
     },
-    skip: true,
+    skip: false,
   );
 }
