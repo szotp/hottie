@@ -19,7 +19,6 @@
                 "--loggerLevel",
                 "ALL",
                 "watch",
-                "test/file_1_test.dart"
             ]
         },
         {

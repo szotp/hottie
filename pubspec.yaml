@@ -16,6 +16,7 @@ dependencies:
   ansicolor:
   args: ^2.7.0
   test: any
+  test_core: any
 dev_dependencies:
   very_good_analysis:
   flutter_test:

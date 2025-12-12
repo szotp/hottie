@@ -90,7 +90,7 @@ class FlutterDaemon {
   }
 
   void _onRegularText(String line) {
-    printer.writeln(line);
+    // printer.writeln(line);
   }
 
   void _onAppStarted(DaemonEvent event) {

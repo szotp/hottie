@@ -1,5 +1,3 @@
-// ignore_for_file: avoid_print necessary for communication with hottie
-
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
@@ -11,7 +9,7 @@ typedef OnComplete = void Function();
 typedef TestMapFactory = TestMap Function(OnComplete);
 const String _hottieExtensionName = 'ext.hottie.test';
 const String _eventHottieRegistered = 'hottie.registered';
-const String _eventHottieUpdate = 'hottie.registered';
+const String _eventHottieUpdate = 'hottie.update';
 
 Future<void> hottie(TestMapFactory tests) async {
   registerExtension(_hottieExtensionName, (_, args) async {
@@ -33,33 +31,39 @@ Future<String> runTests(TestMapFactory tests, Set<String> allowed) async {
     return 'No tests ran';
   }
 
-  runZonedGuarded(() {
-    for (final test in entries) {
-      test.value();
-    }
-  }, (error, stackTrace) {
-    stdout.writeln(error);
-    stdout.writeln(stackTrace);
-  }, zoneSpecification: ZoneSpecification(
-    print: (self, parent, zone, text) {
-      if (completer.isCompleted) {
-        if (!statusCompleter.isCompleted) {
-          statusCompleter.complete(text);
-        } else {
-          stdout.writeln(text);
-        }
-      } else {
-        _sendEvent(_eventHottieUpdate, {'text': text});
+  runZonedGuarded(
+    () {
+      for (final test in entries) {
+        test.value();
       }
     },
-  ));
+    (error, stackTrace) {
+      stdout.writeln(error);
+      stdout.writeln(stackTrace);
+    },
+    zoneSpecification: ZoneSpecification(
+      print: (self, parent, zone, text) {
+        if (completer.isCompleted) {
+          if (!statusCompleter.isCompleted) {
+            statusCompleter.complete(text);
+          } else {
+            stdout.writeln(text);
+          }
+        } else {
+          _sendEvent(_eventHottieUpdate, {'text': text});
+        }
+      },
+    ),
+  );
 
   await completer.future;
   return statusCompleter.future;
 }
 
 void _sendEvent(String name, Map<String, dynamic> params) {
-  stdout.writeln(jsonEncode([
-    {'event': name, 'params': params}
-  ]));
+  stdout.writeln(
+    jsonEncode([
+      {'event': name, 'params': params},
+    ]),
+  );
 }

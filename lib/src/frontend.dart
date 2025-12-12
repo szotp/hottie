@@ -2,6 +2,7 @@
 
 import 'dart:async';
 
+import 'package:ansicolor/ansicolor.dart';
 import 'package:hottie/src/daemon.dart';
 import 'package:hottie/src/generate_main.dart';
 import 'package:hottie/src/script_change.dart';
@@ -10,7 +11,7 @@ import 'package:hottie/src/watch.dart';
 
 const String _hottieExtensionName = 'ext.hottie.test';
 const String _eventHottieRegistered = 'hottie.registered';
-const String _eventHottieUpdate = 'hottie.registered';
+const String _eventHottieUpdate = 'hottie.update';
 
 class HottieFrontendNew {
   final FlutterDaemon daemon = FlutterDaemon();
@@ -56,6 +57,18 @@ class HottieFrontendNew {
 
     try {
       _testing = true;
+      await daemon.callHotReload();
+      final paths = forcePaths ?? (await _scriptChecker.checkLibraries(isolateId!));
+      if (paths.paths.isEmpty) {
+        progress.finish('Nothing to test');
+        _testing = false;
+        return;
+      }
+
+      final ansi = AnsiPen()..blue(bg: true);
+      printer.writeln('\x1B[2J\x1B[H');
+      printer.writeln(ansi('Testing: ${paths.describe()}'));
+
       daemon.setEventHandler(_eventHottieUpdate, (event) {
         final text = event.params['text'] as String;
         if (_progressPattern.matchAsPrefix(text) != null && !text.contains('[E]')) {
@@ -65,10 +78,9 @@ class HottieFrontendNew {
         }
       });
 
-      final paths = forcePaths ?? (await _scriptChecker.checkLibraries(isolateId!));
-      await callHottieTest(paths);
+      final status = await callHottieTest(paths);
       daemon.setEventHandler(_eventHottieUpdate, (_) {});
-      progress.finish('Tests finished');
+      progress.finish(status);
       await daemon.callHotReload(fullRestart: true);
     } finally {
       _testing = false;
@@ -84,6 +96,10 @@ class HottieFrontendNew {
   }
 
   Future<String> callHottieTest(RelativePaths paths) async {
+    if (paths.paths.isEmpty) {
+      return 'Nothing to test';
+    }
+
     logger.finest('Testing: ${paths.describe()}');
 
     final result = await daemon.callServiceExtension(_hottieExtensionName, {

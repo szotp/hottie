@@ -60,6 +60,7 @@ class ScriptChangeChecker {
   Map<RelativePath, String>? _previousState; // map from script uri to script hash
 
   Future<RelativePaths> checkLibraries(String isolateId) async {
+    logger.fine('Check libraries at $isolateId');
     final sw = Stopwatch();
     sw.start();
 

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-const value = 12;
+const value = 2;
 
 void main() {
   test('empty', () {});
