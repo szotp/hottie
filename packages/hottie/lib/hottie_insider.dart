@@ -1,12 +1,15 @@
+// ignore_for_file: implementation_imports necessary for our use case
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 import 'dart:isolate';
 
-typedef TestMap = Map<String, void Function()>;
-typedef OnComplete = void Function();
-typedef TestMapFactory = TestMap Function(OnComplete);
+import 'package:test_core/src/direct_run.dart';
+
+typedef TestMap = Map<String, void Function()>; //
+typedef TestMapFactory = TestMap Function();
 const String _hottieExtensionName = 'ext.hottie.test';
 const String _eventHottieRegistered = 'hottie.registered';
 const String _eventHottieUpdate = 'hottie.update';
@@ -23,41 +26,15 @@ Future<void> hottie(TestMapFactory tests) async {
 }
 
 Future<String> runTests(TestMapFactory tests, Set<String> allowed) async {
-  final completer = Completer<void>();
-  final statusCompleter = Completer<String>();
-  final entries = tests(completer.complete).entries.where((x) => allowed.contains(x.key) || x.key == 'tearDownAll').toList();
+  final entries = tests().entries.where((x) => allowed.contains(x.key) || x.key == 'tearDownAll').toList();
 
-  if (entries.length == 1) {
-    return 'No tests ran';
-  }
+  final ok = await directRunTests(() {
+    for (final entry in entries) {
+      entry.value();
+    }
+  });
 
-  runZonedGuarded(
-    () {
-      for (final test in entries) {
-        test.value();
-      }
-    },
-    (error, stackTrace) {
-      stdout.writeln(error);
-      stdout.writeln(stackTrace);
-    },
-    zoneSpecification: ZoneSpecification(
-      print: (self, parent, zone, text) {
-        if (completer.isCompleted) {
-          if (!statusCompleter.isCompleted) {
-            statusCompleter.complete(text);
-          } else {
-            stdout.writeln(text);
-          }
-        } else {
-          _sendEvent(_eventHottieUpdate, {'text': text});
-        }
-      },
-    ),
-  );
-
-  await completer.future;
-  return statusCompleter.future;
+  return ok.toString();
 }
 
 void _sendEvent(String name, Map<String, dynamic> params) {

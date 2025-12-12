@@ -68,6 +68,14 @@ class HottieFrontendNew {
       final ansi = AnsiPen()..blue(bg: true);
       printer.writeln('\x1B[2J\x1B[H');
       printer.writeln(ansi('Testing: ${paths.describe()}'));
+      final regex = RegExp(r'\d\d:\d\d');
+      daemon.onRegularText = (line) {
+        if (regex.matchAsPrefix(line) != null) {
+          progress.update(line);
+        } else if (line.trim().isNotEmpty) {
+          printer.writeln(line);
+        }
+      };
 
       daemon.setEventHandler(_eventHottieUpdate, (event) {
         final text = event.params['text'] as String;

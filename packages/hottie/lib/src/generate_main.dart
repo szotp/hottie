@@ -30,14 +30,10 @@ Future<RelativePath> generateMain(RelativePaths testPaths) async {
     buffer.writeln("import '$uri' as f$index;");
   }
 
-  buffer.writeln('TestMap _tests(OnComplete onComplete) => {');
+  buffer.writeln('TestMap _tests() => {');
 
   for (final (index, RelativePath path) in testPaths.paths.indexed) {
-    buffer.writeln("'$path': () => group('$path', f$index.main),");
-  }
-
-  if (testPaths.paths.isNotEmpty) {
-    buffer.writeln("'tearDownAll': () => tearDownAll(onComplete),");
+    buffer.writeln("'$path': f$index.main,");
   }
 
   buffer.writeln('};');

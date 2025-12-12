@@ -18,6 +18,7 @@ class FlutterDaemon {
 
   final _onReady = Completer<void>();
   (Completer<DaemonResult>, int)? _onResult;
+  void Function(String)? onRegularText;
 
   final Map<String, void Function(DaemonEvent)> _eventHandlers = {};
   final Map<String, void Function(String)> _onKeyHandlers = {};
@@ -25,6 +26,8 @@ class FlutterDaemon {
   int _nextId = 1;
 
   Future<void> start({required String path}) async {
+    final progress = printer.start('Launching flutter-tester');
+
     try {
       stdin.lineMode = false;
       stdin.echoMode = false;
@@ -35,11 +38,13 @@ class FlutterDaemon {
 
     _eventHandlers['app.debugPort'] = _onDebugPort;
     _eventHandlers['app.started'] = _onAppStarted;
-    _eventHandlers['app.stop'] = _onAppStopped;
+    _eventHandlers['app.stop'] = (e) {
+      progress.finish('App stopped');
+      exit(-1);
+    };
     _onKeyHandlers['q'] = (_) => exit(0);
     _onKeyHandlers['v'] = (_) => logger.toggleVerbosity();
 
-    final progress = printer.start('Launching flutter-tester');
     final currentPath = Directory.current.path;
     final appName = Uri.file(currentPath).pathSegments.last;
 
@@ -52,6 +57,7 @@ class FlutterDaemon {
     process.stdout.transform(utf8.decoder).transform(const LineSplitter()).listen(_onLine);
     await _onReady.future;
     progress.finish('Waiting for changes...');
+    _eventHandlers['app.stop'] = _onAppStopped;
   }
 
   void setEventHandler(String name, void Function(DaemonEvent) handler) {
@@ -67,7 +73,7 @@ class FlutterDaemon {
     final message = DaemonMessage.parse(line);
 
     if (message == null) {
-      _onRegularText(line);
+      onRegularText?.call(line);
       return;
     }
 
@@ -87,10 +93,6 @@ class FlutterDaemon {
       case final DaemonEvent event:
         _eventHandlers[event.event]?.call(event);
     }
-  }
-
-  void _onRegularText(String line) {
-    // printer.writeln(line);
   }
 
   void _onAppStarted(DaemonEvent event) {
