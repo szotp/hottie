@@ -9,8 +9,8 @@
             "name": "example",
             "request": "launch",
             "type": "dart",
-            "program": "../bin/hottie.dart",
-            "cwd": "example",
+            "program": "../hottie/bin/hottie.dart",
+            "cwd": "packages/example",
             "env": {
                 "PATH": "${env:PATH}:${workspaceFolder}/.fvm/flutter_sdk/bin"
             },

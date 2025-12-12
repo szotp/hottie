@@ -1,26 +1,14 @@
-name: hottie
+name: workspace
 description: "Runs tests automatically on file changes."
 publish_to: 'none'
 version: 0.2.0-dev.2
 
 workspace:
-  - example
+  - packages/example
+  - packages/hottie
 
 environment:
   sdk: ^3.5.0
 
-dependencies:
-  vm_service:
-  stack_trace:
-  logging:
-  ansicolor:
-  args: ^2.7.0
-  test: any
-  test_core: any
 dev_dependencies:
   very_good_analysis:
-  flutter_test:
-    sdk: flutter
-
-executables:
-  hottie:
