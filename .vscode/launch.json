@@ -6,7 +6,7 @@
     "configurations": [
         {
             "console": "terminal",
-            "name": "example",
+            "name": "example (hottie)",
             "request": "launch",
             "type": "dart",
             "program": "../hottie/bin/hottie.dart",
@@ -22,11 +22,10 @@
             ]
         },
         {
-            "name": "example (directly)",
+            "name": "example (app)",
             "request": "launch",
             "type": "dart",
-            // or flutter run example/test/main_hottie.dart -d flutter-tester
-            "program": "example/test/main_hottie.dart",
+            "program": "packages/example/lib/main.dart",
             "deviceId": "flutter-tester"
         }
     ]

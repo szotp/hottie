@@ -25,7 +25,7 @@ class FlutterDaemon {
 
   int _nextId = 1;
 
-  Future<void> start({required String path}) async {
+  Future<void> start({required Uri hottieUri}) async {
     final progress = printer.start('Launching flutter-tester');
 
     try {
@@ -45,14 +45,8 @@ class FlutterDaemon {
     _onKeyHandlers['q'] = (_) => exit(0);
     _onKeyHandlers['v'] = (_) => logger.toggleVerbosity();
 
-    final currentPath = Directory.current.path;
-    final appName = Uri.file(currentPath).pathSegments.last;
-
-    process = await Process.start(
-      'flutter',
-      ['run', path, '-d', 'flutter-tester', '--no-pub', '--device-connection', 'attached', '--machine'],
-      environment: {'UNIT_TEST_ASSETS': currentPath, 'APP_NAME': appName},
-    );
+    process =
+        await Process.start('flutter', ['run', hottieUri.toFilePath(), '-d', 'flutter-tester', '--no-pub', '--device-connection', 'attached', '--machine']);
     process.stderr.listen(stderr.add);
     process.stdout.transform(utf8.decoder).transform(const LineSplitter()).listen(_onLine);
     await _onReady.future;

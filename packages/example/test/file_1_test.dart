@@ -46,7 +46,7 @@ void main() {
     'load asset',
     () async {
       final asset = await rootBundle.loadString('assets/asset.txt');
-      expect(asset, 'hello');
+      expect(asset, 'hello 22');
     },
     skip: false,
   );

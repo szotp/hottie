@@ -3,6 +3,7 @@
 import 'dart:async';
 
 import 'package:ansicolor/ansicolor.dart';
+import 'package:hottie/src/assets.dart';
 import 'package:hottie/src/daemon.dart';
 import 'package:hottie/src/generate_main.dart';
 import 'package:hottie/src/script_change.dart';
@@ -15,27 +16,31 @@ const String _eventHottieUpdate = 'hottie.update';
 
 class HottieFrontendNew {
   final FlutterDaemon daemon = FlutterDaemon();
-  late RelativePaths allTests;
+  late Files allTests;
   late final ScriptChangeChecker _scriptChecker;
   bool _isInitialized = false;
   bool _testing = false;
   String? isolateId;
+  Uri? assetsUri;
 
-  Future<void> run({required RelativePaths paths, String? existingHottiePath}) async {
-    allTests = paths.paths.isNotEmpty ? paths : findTestsInCurrentDirectory();
+  Future<void> run({required Files paths, String? existingHottiePath}) async {
+    allTests = paths.uris.isNotEmpty ? paths : findTestsInCurrentDirectory();
 
-    final hottiePath = await generateMain(RelativePaths.empty);
+    final hottieUri = await generateMain(allTests);
 
     daemon.setEventHandler(_eventHottieRegistered, _onHottieRegistered);
-    await daemon.start(path: hottiePath);
+    await daemon.start(hottieUri: hottieUri);
 
     _scriptChecker = ScriptChangeChecker(daemon.vmService);
 
-    await generateMain(allTests);
-    await daemon.callHotReload();
+    //await generateMain(allTests);
+    //await daemon.callHotReload();
     _isInitialized = true;
     watchDartFiles().forEach((_) => runCycle()).withLogging();
     daemon.setKeyHandler('t', (_) => testAll());
+
+    assetsUri = findAssetsFolder();
+    testAll().withLogging();
   }
 
   Future<void> testAll() {
@@ -47,7 +52,7 @@ class HottieFrontendNew {
     return runCycle(all);
   }
 
-  Future<void> runCycle([RelativePaths? forcePaths]) async {
+  Future<void> runCycle([Files? forcePaths]) async {
     if (_testing) {
       logger.warning('Tests still running.');
       return;
@@ -59,7 +64,7 @@ class HottieFrontendNew {
       _testing = true;
       await daemon.callHotReload();
       final paths = forcePaths ?? (await _scriptChecker.checkLibraries(isolateId!));
-      if (paths.paths.isEmpty) {
+      if (paths.uris.isEmpty) {
         progress.finish('Nothing to test');
         _testing = false;
         return;
@@ -90,6 +95,8 @@ class HottieFrontendNew {
       daemon.setEventHandler(_eventHottieUpdate, (_) {});
       progress.finish(status);
       await daemon.callHotReload(fullRestart: true);
+    } catch (error) {
+      progress.finish(error.toString());
     } finally {
       _testing = false;
     }
@@ -103,16 +110,14 @@ class HottieFrontendNew {
     _scriptChecker.checkLibraries(isolateId!).withLogging();
   }
 
-  Future<String> callHottieTest(RelativePaths paths) async {
-    if (paths.paths.isEmpty) {
+  Future<String> callHottieTest(Files paths) async {
+    if (paths.uris.isEmpty) {
       return 'Nothing to test';
     }
 
     logger.finest('Testing: ${paths.describe()}');
 
-    final result = await daemon.callServiceExtension(_hottieExtensionName, {
-      'paths': paths.encode(),
-    });
+    final result = await daemon.callServiceExtension(_hottieExtensionName, {'paths': paths.encode(), 'assets': assetsUri!.toFilePath()});
     return result.result['status'] as String;
   }
 }

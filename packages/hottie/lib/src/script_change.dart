@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
-import 'dart:io';
 
 import 'package:hottie/src/utils/logger.dart';
 import 'package:vm_service/vm_service.dart';
@@ -22,23 +21,21 @@ Future<VmService?> vmServiceConnect() async {
 
 typedef RelativePath = String;
 
-extension type RelativePaths(Set<RelativePath> paths) {
-  factory RelativePaths.decode(String route) {
-    final testPaths = (jsonDecode(route) as List).cast<RelativePath>().toSet();
-    return RelativePaths(testPaths);
+extension type Files(Set<Uri> uris) {
+  factory Files.decode(String route) {
+    final testPaths = (jsonDecode(route) as List).cast<RelativePath>().map(Uri.parse).toSet();
+    return Files(testPaths);
   }
 
-  static final empty = RelativePaths(const {});
+  static final empty = Files(const {});
 
-  List<Uri> get uris => paths.map((x) => Uri.file(File(x).absolute.path)).toList();
-
-  String encode() => jsonEncode(paths.toList());
+  String encode() => jsonEncode(uris.map((x) => x.toString()).toList());
 
   String describe() {
-    if (paths.length > 3) {
-      return '${paths.length} files';
+    if (uris.length > 3) {
+      return '${uris.length} files';
     } else {
-      return paths.join(', ');
+      return uris.join(', ');
     }
   }
 }
@@ -59,7 +56,7 @@ class ScriptChangeChecker {
   /// script.relativePath -> script.id
   Map<RelativePath, String>? _previousState; // map from script uri to script hash
 
-  Future<RelativePaths> checkLibraries(String isolateId) async {
+  Future<Files> checkLibraries(String isolateId) async {
     logger.fine('Check libraries at $isolateId');
     final sw = Stopwatch();
     sw.start();
@@ -70,7 +67,7 @@ class ScriptChangeChecker {
     final changed = <String>{};
 
     for (final script in scripts) {
-      final key = script.relativePath;
+      final key = script.uri!;
       currentState[key] = script.id!;
 
       if (previous != null && previous[key] != script.id!) {
@@ -78,10 +75,10 @@ class ScriptChangeChecker {
       }
     }
     _previousState = currentState;
-    return RelativePaths(changed);
+    return Files(changed.map(Uri.parse).toSet());
   }
 
-  Stream<RelativePaths> observe() async* {
+  Stream<Files> observe() async* {
     final vm = _vm;
     vm.streamListen('Isolate').withLogging();
     yield* vm.onIsolateEvent.where((event) => event.kind == 'IsolateReload').asyncMap((event) => checkLibraries(event.isolate!.id!));
@@ -97,12 +94,5 @@ extension on ScriptRef {
   /// Tests are not part of any package, so their uri always starts with `file:///`
   bool get isTest {
     return uri!.startsWith('file:///') && uri!.endsWith('_test.dart');
-  }
-
-  RelativePath get relativePath {
-    final uri = Uri.parse(this.uri!);
-    final segments = uri.pathSegments;
-    final index = segments.indexOf('test');
-    return segments.sublist(index).join('/');
   }
 }

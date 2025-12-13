@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  print(rootBundle.loadString('assets/asset.txt'));
   runApp(const MainApp());
 }
 

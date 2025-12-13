@@ -15,9 +15,12 @@ dependencies:
   args: ^2.7.0
   test: any
   test_core: any
-dev_dependencies:
+  ffi: any
+  flutter:
+    sdk: flutter
   flutter_test:
     sdk: flutter
+
 
 executables:
   hottie:
