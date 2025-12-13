@@ -3,9 +3,10 @@ import 'dart:developer';
 import 'dart:io';
 import 'dart:isolate' as isolate;
 
-import 'package:hottie/src/script_change.dart';
-import 'package:hottie/src/utils/logger.dart';
 import 'package:vm_service/vm_service.dart';
+
+import 'script_change.dart';
+import 'utils/logger.dart';
 
 /// Starts watching Dart files for changes.
 /// Returns a stream that emits the path of changed Dart files.

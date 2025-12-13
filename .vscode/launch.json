@@ -27,6 +27,13 @@
             "type": "dart",
             "program": "packages/example/lib/main.dart",
             "deviceId": "flutter-tester"
+        },
+        {
+            "name": "main_hottie",
+            "request": "launch",
+            "type": "dart",
+            "program": "packages/example/build/main_hottie.g.dart",
+            "deviceId": "flutter-tester",
         }
     ]
 }

@@ -10,8 +10,6 @@ environment:
 dependencies:
   vm_service:
   stack_trace:
-  logging:
-  ansicolor:
   args: ^2.7.0
   test: any
   test_core: any

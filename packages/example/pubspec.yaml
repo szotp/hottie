@@ -10,6 +10,10 @@ dependencies:
   flutter_test:
     sdk: flutter
   test: any
+
+dev_dependencies: 
+  hottie:
+    path: ../hottie
   
 flutter:
   assets:

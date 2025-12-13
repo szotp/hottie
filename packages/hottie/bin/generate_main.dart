@@ -59,6 +59,9 @@ Future<Uri> generateMain(Files testPaths) async {
   buffer.writeln('};');
   buffer.writeln('Future<void> main() => hottie(_tests);');
 
+  buffer.writeln("@pragma('vm:entry-point')");
+  buffer.writeln('Future<void> hottieIsolated() => runTests(_tests);');
+
   if (!Directory('build').existsSync()) {
     Directory('build').createSync();
   }

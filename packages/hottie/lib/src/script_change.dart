@@ -2,9 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
 
-import 'package:hottie/src/utils/logger.dart';
 import 'package:vm_service/vm_service.dart';
 import 'package:vm_service/vm_service_io.dart';
+
+import 'utils/logger.dart';
 
 Future<VmService?> vmServiceConnect() async {
   final serviceInfo = await Service.getInfo();

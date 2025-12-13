@@ -6,16 +6,14 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
-import 'package:hottie/src/frontend.dart';
-import 'package:hottie/src/script_change.dart';
 import 'package:hottie/src/utils/logger.dart';
-import 'package:logging/logging.dart';
+
+import 'generate_main.dart';
 
 const String version = '0.0.2';
 
 void addGlobalOptions(ArgParser parser) {
   parser
-    ..addOption('loggerLevel', allowed: Level.LEVELS.map((x) => x.name))
     ..addFlag(
       'verbose',
       abbr: 'v',
@@ -42,11 +40,6 @@ class _CommandRunner extends CommandRunner<void> {
       return;
     }
 
-    final loggerLevel = args.option('loggerLevel');
-    if (loggerLevel != null) {
-      logger.level = Level.LEVELS.firstWhere((x) => x.name == loggerLevel);
-    }
-
     return super.runCommand(args);
   }
 }
@@ -59,17 +52,28 @@ class _RunCommand extends Command<void> {
 
   @override
   FutureOr<void>? run() async {
-    final args = argResults!;
+    final testPaths = findTestsInCurrentDirectory();
+    final hottieUri = await generateMain(testPaths);
+    logger.info('Generated $hottieUri');
 
-    final files = args.rest;
-    for (final file in files) {
-      if (!File(file).existsSync()) {
-        logger.shout('$file does not exist');
-        exit(-1);
-      }
+    final process = await Process.start('flutter', [
+      'run',
+      hottieUri.toFilePath(),
+      '-d',
+      'flutter-tester',
+      '--no-pub',
+      '--device-connection',
+      'attached',
+    ]);
+
+    process.stderr.listen(stderr.add);
+    process.stdout.listen(stdout.add);
+    stdin.listen(process.stdin.add);
+
+    try {
+      stdin.lineMode = false;
+    } catch (_) {
+      // in debug console
     }
-
-    final frontend = HottieFrontendNew();
-    await frontend.run(paths: Files.empty);
   }
 }

@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:ansicolor/ansicolor.dart';
-import 'package:logging/logging.dart';
 import 'package:stack_trace/stack_trace.dart';
 
 const hottieReloadSpell = '[HOTTIE:RELOAD]';
@@ -11,56 +9,53 @@ const hottieFromScriptEnvironmentKey = 'HOTTIE_FROM_SCRIPT';
 const _ansiReplaceLine = '\r\x1b[K';
 
 final printer = ConsoleOutput();
-final Logger logger = printer.create();
+final Logger logger = printer;
 
-class _Style extends AnsiPen {
-  _Style(this.prefix);
-
-  final String prefix;
+abstract class Logger {
+  void log(LogLevel level, Object message, [StackTrace? stackTrace]);
+  void info(Object message) => log(LogLevel.info, message);
+  void warning(Object message) => log(LogLevel.info, message);
+  void fine(Object message) => log(LogLevel.info, message);
+  void severe(Object message, StackTrace stackTrace) => log(LogLevel.info, message);
 }
 
-class ConsoleOutput {
-  Logger create() {
-    recordStackTraceAtLevel = Level.INFO;
-    ansiColorDisabled = false;
-    final logger = Logger.root;
-    //logger.level = Level.ALL;
-    logger.onRecord.listen(_onData);
-    return logger;
-  }
+class LogLevel {
+  const LogLevel(this.prefix);
 
+  final String prefix;
+
+  static const verbose = LogLevel('F ');
+  static const info = LogLevel('ℹ️ ');
+  static const warning = LogLevel('⚠️ ');
+  static const error = LogLevel('‼️ ');
+  static const tragedy = LogLevel('🚨');
+
+  String format(String message) => message;
+}
+
+class ConsoleOutput extends Logger {
   final _startTime = DateTime.now();
-  final _timePen = AnsiPen()..gray(level: 0.5);
-  final _locationPen = AnsiPen()..gray(level: 0.95);
-
-  final Map<Level, _Style> _levels = {
-    Level.FINEST: _Style('F '),
-    Level.FINER: _Style('F '),
-    Level.FINE: _Style('F '),
-    Level.CONFIG: _Style('C '),
-    Level.INFO: _Style('ℹ️ '),
-    Level.WARNING: _Style('⚠️ ')..red(bold: true),
-    Level.SEVERE: _Style('‼️ '),
-    Level.SHOUT: _Style('🚨')..red(bg: true),
-    Level.OFF: _Style('-'),
-  };
 
   static const _padding = '                 ';
 
-  void _onData(LogRecord record) {
-    final time = record.time.difference(_startTime);
-    final timeString = _timePen(time);
-    final level = _levels[record.level]!;
+  String _timePen(String input) => input;
+  String _locationPen(String location) => location;
 
-    final trace = Trace.from(record.stackTrace ?? StackTrace.current);
+  @override
+  void log(LogLevel level, Object message, [StackTrace? stackTrace]) {
+    final timestamp = DateTime.now();
+    final time = timestamp.difference(_startTime);
+    final timeString = _timePen(time.toString());
+
+    final trace = Trace.from(stackTrace ?? StackTrace.current);
     final location = trace.frames.where((x) => !x.location.contains('logger.dart') && !x.location.contains('matcher')).firstOrNull?.location;
 
-    final lines = record.message.split('\n');
+    final lines = message.toString().split('\n');
 
-    lines[0] = '$timeString ${level.prefix} ${level(lines.first)} ${_locationPen('at $location ')}';
+    lines[0] = '$timeString ${level.prefix} ${level.format(lines.first)} ${_locationPen('at $location ')}';
 
     for (var i = 1; i < lines.length; i++) {
-      lines[i] = '$_padding ${level(lines[i])}';
+      lines[i] = '$_padding ${level.format(lines[i])}';
     }
 
     write(lines);
@@ -99,7 +94,7 @@ class ConsoleOutput {
 
 extension FutureExtension<T> on Future<T> {
   void withLogging() {
-    then((_) {}, onError: (Object e, StackTrace st) => logger.severe(e.toString(), e, st)).ignore();
+    then((_) {}, onError: logger.severe).ignore();
   }
 }
 

@@ -5,6 +5,33 @@ import 'package:flutter_test/flutter_test.dart';
 const value = 2;
 
 void main() {
+  testWidgets(
+    'load asset from testWidget',
+    (tester) async {
+      final asset = await rootBundle.loadString('assets/asset.txt');
+
+      expect(asset, 'hello');
+    },
+  );
+
+  testWidgets(
+    'load asset from testWidget',
+    (tester) async {
+      print('WTF');
+      final asset = await rootBundle.loadString('assets/asset.txt');
+
+      expect(asset, 'hello');
+    },
+  );
+
+  test(
+    'load asset',
+    () async {
+      final asset = await rootBundle.loadString('assets/asset.txt');
+      expect(asset, 'hello');
+    },
+  );
+
   test('empty', () {});
   test('simplest', () {
     expect(2, value);
@@ -42,12 +69,10 @@ void main() {
     skip: true,
   );
 
-  test(
-    'load asset',
-    () async {
-      final asset = await rootBundle.loadString('assets/asset.txt');
-      expect(asset, 'hello 22');
+  testWidgets(
+    'await from testWidget',
+    (tester) async {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 1)));
     },
-    skip: false,
   );
 }
