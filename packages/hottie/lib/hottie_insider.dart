@@ -2,6 +2,8 @@
 // ignore_for_file: always_use_package_imports necessary for our use case
 
 import 'dart:io';
+import 'dart:isolate';
+import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:test_core/src/direct_run.dart';
@@ -10,6 +12,7 @@ import 'package:vm_service/vm_service.dart';
 import 'src/ffi.dart';
 import 'src/mock_assets.dart';
 import 'src/script_change.dart';
+import 'src/utils/logger.dart';
 
 typedef TestMap = Map<String, void Function()>;
 typedef TestMapFactory = TestMap Function();
@@ -23,26 +26,40 @@ Future<void> hottie(TestMapFactory tests, {bool runImmediately = false}) async {
     return;
   }
 
+  Files? failed;
+
+  final resultsPort = ReceivePort();
+  IsolateNameServer.removePortNameMapping('hottie.resultsPort');
+  IsolateNameServer.registerPortWithName(resultsPort.sendPort, 'hottie.resultsPort');
+  resultsPort.forEach((message) {
+    failed = Files.decode(message as String);
+    for (final file in failed!.uris) {
+      print(file);
+    }
+  }).withLogging();
+
+  if (runImmediately) {
+    spawn('hottieIsolated', '');
+  }
+
   await vm.streamListen(EventStreams.kIsolate);
   await vm.onIsolateEvent.forEach((event) async {
     if (event.kind == EventKind.kIsolateReload) {
-      spawn('hottieIsolated', '');
+      logger.info('Spawning');
+      spawn('hottieIsolated', failed?.encode() ?? '');
     }
   });
 }
 
 Future<void> runTests(TestMapFactory tests, {Set<String>? allowed}) async {
-  final entries = tests().entries.where((x) => allowed?.remove(x.key) ?? true).toList();
-  final missing = allowed?.toSet() ?? {};
-  missing.removeAll(entries.map((x) => x.key));
-  assert(missing.isEmpty, 'Tests not found: $missing.\n AVAILABLE TESTS: ${tests().keys.toList()}');
-
+  final entries = tests().entries.where((x) => allowed?.contains(x.key) ?? true).toList();
   AutomatedTestWidgetsFlutterBinding.ensureInitialized();
   mockFlutterAssets();
 
   final passed = <Uri>[];
   final failed = <Uri>[];
 
+  final saved = Directory.current;
   for (final entry in entries) {
     var passedTest = false;
     final uri = Uri.file(entry.key);
@@ -65,11 +82,10 @@ Future<void> runTests(TestMapFactory tests, {Set<String>? allowed}) async {
       failed.add(uri);
     }
   }
+  Directory.current = saved;
 
   print('Failed: ${failed.length}. Passed: ${passed.length}');
-  for (final failed in failed) {
-    print(failed);
-  }
+  IsolateNameServer.lookupPortByName('hottie.resultsPort')?.send(Files(failed.toSet()).encode());
 }
 
 extension on Uri {
