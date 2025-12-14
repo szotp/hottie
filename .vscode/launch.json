@@ -16,8 +16,6 @@
             },
             "preLaunchTask": "cleanup",
             "args": [
-                "--loggerLevel",
-                "ALL",
                 "watch",
             ]
         },
@@ -32,7 +30,7 @@
             "name": "main_hottie",
             "request": "launch",
             "type": "dart",
-            "program": "packages/example/build/main_hottie.g.dart",
+            "program": "build/hottie_main.dart",
             "deviceId": "flutter-tester",
         }
     ]

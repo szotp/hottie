@@ -1,37 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-const value = 2;
+const value = 1;
 
 void main() {
-  testWidgets(
-    'load asset from testWidget',
-    (tester) async {
-      final asset = await rootBundle.loadString('assets/asset.txt');
-
-      expect(asset, 'hello');
-    },
-  );
-
-  testWidgets(
-    'load asset from testWidget',
-    (tester) async {
-      print('WTF');
-      final asset = await rootBundle.loadString('assets/asset.txt');
-
-      expect(asset, 'hello');
-    },
-  );
-
-  test(
-    'load asset',
-    () async {
-      final asset = await rootBundle.loadString('assets/asset.txt');
-      expect(asset, 'hello');
-    },
-  );
-
   test('empty', () {});
   test('simplest', () {
     expect(2, value);

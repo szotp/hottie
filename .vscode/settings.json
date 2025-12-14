@@ -5,5 +5,4 @@
   "dart.flutterSdkPath": ".fvm/versions/3.32.8",
   "dart.lineLength": 160,
   "dart.showDartDeveloperLogs": false,
-  "dart.flutterHotReloadOnSave": "never"
 }

@@ -12,3 +12,5 @@ environment:
 
 dev_dependencies:
   very_good_analysis:
+  flutter_test:
+    sdk: flutter
