@@ -16,8 +16,6 @@
             },
             "preLaunchTask": "cleanup",
             "args": [
-                "--loggerLevel",
-                "ALL",
                 "watch",
             ]
         },

@@ -7,6 +7,7 @@ import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:test_core/src/direct_run.dart';
+import 'package:test_core/src/runner/reporter/github.dart';
 import 'package:vm_service/vm_service.dart';
 
 import 'src/ffi.dart';
@@ -15,9 +16,24 @@ import 'src/script_change.dart';
 import 'src/utils/logger.dart';
 
 typedef TestMap = Map<String, void Function()>;
-typedef TestMapFactory = TestMap Function();
 
-Future<void> hottie(TestMapFactory tests, {bool runImmediately = false}) async {
+Files startResultsReceiver() {
+  final failed = Files({});
+
+  final resultsPort = ReceivePort();
+  IsolateNameServer.removePortNameMapping('hottie.resultsPort');
+  IsolateNameServer.registerPortWithName(resultsPort.sendPort, 'hottie.resultsPort');
+  resultsPort.forEach((message) {
+    failed.uris.clear();
+    failed.uris.addAll(Files.decode(message as String).uris);
+    for (final file in failed!.uris) {
+      print(file);
+    }
+  }).withLogging();
+  return failed;
+}
+
+Future<void> hottie(TestMap tests, {bool runImmediately = false}) async {
   final vm = await vmServiceConnect();
 
   if (vm == null) {
@@ -26,23 +42,14 @@ Future<void> hottie(TestMapFactory tests, {bool runImmediately = false}) async {
     return;
   }
 
-  Files? failed;
-
-  final resultsPort = ReceivePort();
-  IsolateNameServer.removePortNameMapping('hottie.resultsPort');
-  IsolateNameServer.registerPortWithName(resultsPort.sendPort, 'hottie.resultsPort');
-  resultsPort.forEach((message) {
-    failed = Files.decode(message as String);
-    for (final file in failed!.uris) {
-      print(file);
-    }
-  }).withLogging();
+  final failed = startResultsReceiver();
 
   if (runImmediately) {
     spawn('hottieIsolated', '');
   }
 
   await vm.streamListen(EventStreams.kIsolate);
+  logger.info('Waiting for hot reload');
   await vm.onIsolateEvent.forEach((event) async {
     if (event.kind == EventKind.kIsolateReload) {
       logger.info('Spawning');
@@ -51,8 +58,8 @@ Future<void> hottie(TestMapFactory tests, {bool runImmediately = false}) async {
   });
 }
 
-Future<void> runTests(TestMapFactory tests, {Set<String>? allowed}) async {
-  final entries = tests().entries.where((x) => allowed?.contains(x.key) ?? true).toList();
+Future<void> runTests(TestMap tests, {Set<String>? allowed}) async {
+  final entries = tests.entries.where((x) => allowed?.contains(x.key) ?? true).toList();
   AutomatedTestWidgetsFlutterBinding.ensureInitialized();
   mockFlutterAssets();
 
@@ -62,15 +69,19 @@ Future<void> runTests(TestMapFactory tests, {Set<String>? allowed}) async {
   final saved = Directory.current;
   for (final entry in entries) {
     var passedTest = false;
-    final uri = Uri.file(entry.key);
+    final uri = Uri.parse(entry.key);
 
     try {
       Directory.current = uri.packagePath;
 
       print('TESTING: ${uri.relativePath}');
       goldenFileComparator = LocalFileComparator(uri);
-      passedTest = await directRunTests(entry.value).timeout(const Duration(seconds: 10));
-      //reporterFactory: (engine) => FailuresOnlyReporter.watch(engine, stdout, color: true, printPlatform: false, printPath: true));
+      passedTest = await directRunTests(
+        entry.value,
+        reporterFactory: (engine) => GithubReporter.watch(engine, stdout, printPlatform: false, printPath: true),
+      ).timeout(
+        const Duration(seconds: 10),
+      );
     } catch (error, stackTrace) {
       print(error);
       print(stackTrace);
@@ -99,6 +110,7 @@ extension on Uri {
 
   String get packagePath {
     final segments = pathSegments.sublist(0, pathSegments.indexOf('test'));
-    return Uri(pathSegments: segments, scheme: 'file').toFilePath();
+    final filePath = Uri(pathSegments: segments, scheme: 'file').toFilePath();
+    return filePath;
   }
 }

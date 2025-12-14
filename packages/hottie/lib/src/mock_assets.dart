@@ -31,9 +31,9 @@ Uri findAssetsFolderPath() {
     throw Exception('flutter_assets.d not found in ${latestBuildDir.path}');
   }
 
-  // get path for AssetManifest.json
+  // get path for AssetManifest
   final content = assetsFile.readAsStringSync();
-  final assetManifestMatch = RegExp(r'(\S+/AssetManifest\.json)').firstMatch(content);
+  final assetManifestMatch = RegExp(r'(\S+/AssetManifest)').firstMatch(content);
 
   if (assetManifestMatch == null) {
     throw Exception('AssetManifest.json path not found in flutter_assets.d');

@@ -50,7 +50,7 @@ Future<Uri> generateMain(Files testPaths) async {
     buffer.writeln("import '$uri' as f$index;");
   }
 
-  buffer.writeln('TestMap _tests() => {');
+  buffer.writeln('const TestMap _tests = {');
 
   for (final (index, Uri path) in testPaths.uris.indexed) {
     buffer.writeln("'$path': f$index.main,");
