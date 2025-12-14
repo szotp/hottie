@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:args/command_runner.dart';
 import 'package:hottie/src/script_change.dart';
 import 'package:hottie/src/utils/logger.dart';
 
@@ -67,4 +68,18 @@ Future<Uri> generateMain(Files testPaths) async {
   }
   File(_path).writeAsStringSync(buffer.toString());
   return Uri.file(_path);
+}
+
+class GenerateCommand extends Command<void> {
+  @override
+  String get description => 'generate hottie tests file';
+  @override
+  String get name => 'generate';
+
+  @override
+  Future<void>? run() async {
+    final testPaths = findTestsInCurrentDirectory();
+    final hottieUri = await generateMain(testPaths);
+    logger.info('Generated $hottieUri');
+  }
 }

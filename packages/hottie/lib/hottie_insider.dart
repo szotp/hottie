@@ -14,10 +14,15 @@ import 'src/mock_assets.dart';
 import 'src/script_change.dart';
 import 'src/utils/logger.dart';
 
+abstract class TestFile {
+  String get uri;
+  void Function() get testMain;
+}
+
 typedef TestMap = Map<String, void Function()>;
 typedef TestMapFactory = TestMap Function();
 
-Future<void> hottie(TestMapFactory tests, {bool runImmediately = false}) async {
+Future<void> hottie(List<TestFile> tests, {bool runImmediately = false}) async {
   final vm = await vmServiceConnect();
 
   if (vm == null) {
@@ -51,8 +56,8 @@ Future<void> hottie(TestMapFactory tests, {bool runImmediately = false}) async {
   });
 }
 
-Future<void> runTests(TestMapFactory tests, {Set<String>? allowed}) async {
-  final entries = tests().entries.where((x) => allowed?.contains(x.key) ?? true).toList();
+Future<void> runTests(List<TestFile> tests, {Set<String>? allowed}) async {
+  final entries = tests.where((x) => allowed?.contains(x.uri) ?? true).toList();
   AutomatedTestWidgetsFlutterBinding.ensureInitialized();
   mockFlutterAssets();
 
@@ -62,14 +67,14 @@ Future<void> runTests(TestMapFactory tests, {Set<String>? allowed}) async {
   final saved = Directory.current;
   for (final entry in entries) {
     var passedTest = false;
-    final uri = Uri.file(entry.key);
+    final uri = Uri.file(entry.uri);
 
     try {
       Directory.current = uri.packagePath;
 
       print('TESTING: ${uri.relativePath}');
       goldenFileComparator = LocalFileComparator(uri);
-      passedTest = await directRunTests(entry.value).timeout(const Duration(seconds: 10));
+      passedTest = await directRunTests(entry.testMain).timeout(const Duration(seconds: 10));
       //reporterFactory: (engine) => FailuresOnlyReporter.watch(engine, stdout, color: true, printPlatform: false, printPath: true));
     } catch (error, stackTrace) {
       print(error);
