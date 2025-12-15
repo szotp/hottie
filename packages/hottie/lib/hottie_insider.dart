@@ -1,14 +1,13 @@
 // ignore_for_file: implementation_imports necessary for our use case
 // ignore_for_file: always_use_package_imports necessary for our use case
 
+import 'dart:developer';
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:test_core/src/direct_run.dart';
-//import 'package:test_core/src/runner/reporter/github.dart';
-import 'package:vm_service/vm_service.dart' hide Isolate;
 
 import 'src/ffi.dart';
 import 'src/mock_assets.dart';
@@ -16,10 +15,9 @@ import 'src/script_change.dart';
 import 'src/utils/logger.dart';
 
 typedef TestMain = void Function();
-typedef TestMap = List<TestFile>;
 
 Files startResultsReceiver() {
-  final failed = Files({});
+  const failed = Files({});
 
   final resultsPort = ReceivePort();
   IsolateNameServer.removePortNameMapping('hottie.resultsPort');
@@ -34,9 +32,9 @@ Files startResultsReceiver() {
   return failed;
 }
 
-extension type PackageName(String name) {}
+extension type const PackageName(String name) {}
 
-final class TestFile {
+class TestFile {
   const TestFile(this.uriString, this.testMain);
   final String uriString;
   final TestMain testMain;
@@ -50,24 +48,26 @@ Future<void> mainWatch({bool runImmediately = false}) async {
     return;
   }
 
-  final failed = startResultsReceiver();
+  final knownFailed = startResultsReceiver();
 
   if (runImmediately) {
     spawn('hottieIsolated', '');
   }
 
-  await vm.streamListen(EventStreams.kIsolate);
+  final scriptChange = ScriptChangeChecker(vm, Service.getIsolateId(Isolate.current)!);
+
   logger.info('Waiting for hot reload');
-  await vm.onIsolateEvent.forEach((event) async {
-    if (event.kind == EventKind.kIsolateReload) {
-      logger.info('Spawning');
-      spawn('hottieIsolated', failed?.encode() ?? '');
-    }
+  await scriptChange.observe().forEach((changedTests) async {
+    logger.info('Spawning for: ${changedTests.describe()}');
+
+    final arguments = IsolateArguments(knownFailed, changedTests);
+
+    spawn('hottieIsolated', arguments.encode());
   });
 }
 
-Future<void> mainRunTests(TestMap tests, {Set<TestFile>? allowed, Set<TestFile>? skip}) {
-  return _mainRunTests(tests, allowed: allowed, skip: skip);
+Future<void> mainRunTests(RunTestsConfiguration configuration) {
+  return _mainRunTests(configuration);
 }
 
 class HottieBinding extends AutomatedTestWidgetsFlutterBinding {
@@ -81,21 +81,53 @@ class HottieBinding extends AutomatedTestWidgetsFlutterBinding {
   static final instance = HottieBinding();
 }
 
-Future<void> _mainRunTests(TestMap tests, {Set<TestFile>? allowed, Set<TestFile>? skip}) async {
-  final entries = tests.where((x) {
-    if (skip?.contains(x) ?? false) {
-      return false;
-    }
-    return allowed?.contains(x) ?? true;
-  }).toList();
+class IsolateArguments {
+  IsolateArguments(this.failed, this.changed);
+
+  factory IsolateArguments.decode(String encoded) {
+    final parts = encoded.split('|');
+    return IsolateArguments(
+      Files.decode(parts[0]),
+      Files.decode(parts[1]),
+    );
+  }
+
+  final Files failed;
+  final Files changed;
+
+  String encode() {
+    return '${failed.encode()}|${changed.encode()}';
+  }
+}
+
+class RunTestsConfiguration {
+  factory RunTestsConfiguration.from(List<TestFile> tests) {
+    return RunTestsConfiguration._(tests.toList());
+  }
+
+  RunTestsConfiguration._(this.tests);
+
+  final List<TestFile> tests;
+  final IsolateArguments arguments = IsolateArguments.decode(PlatformDispatcher.instance.defaultRouteName);
+
+  void onlyChangedTests() {
+    tests.removeWhere(arguments.changed.containsNot);
+  }
+
+  void onlyPackage(PackageName name) {
+    tests.keepOnly((x) => x.packageName == name.name);
+  }
+}
+
+Future<void> _mainRunTests(RunTestsConfiguration configuration) async {
   final binding = HottieBinding.instance;
   mockFlutterAssets();
 
-  final passed = <Uri>[];
-  final failed = <Uri>[];
+  final passed = <String>[];
+  final failed = <String>[];
 
   final saved = Directory.current;
-  for (final entry in entries) {
+  for (final entry in configuration.tests) {
     if (binding.didHotReloadWhileTesting) {
       // hot reload is not supported, we have to quit asap to prevent crashes
       logger.warning('Hot reload detected. Exiting tests');
@@ -120,9 +152,9 @@ Future<void> _mainRunTests(TestMap tests, {Set<TestFile>? allowed, Set<TestFile>
     }
 
     if (passedTest) {
-      passed.add(uri);
+      passed.add(uri.toString());
     } else {
-      failed.add(uri);
+      failed.add(uri.toString());
     }
   }
   Directory.current = saved;
@@ -144,5 +176,24 @@ extension on Uri {
     final segments = pathSegments.sublist(0, pathSegments.indexOf('test'));
     final filePath = Uri(pathSegments: segments, scheme: 'file').toFilePath();
     return filePath;
+  }
+}
+
+extension FilesExtension on Files {
+  bool contains(TestFile file) => uris.contains(file.uriString);
+  bool containsNot(TestFile file) => !uris.contains(file.uriString);
+}
+
+extension TestListExtensions on List<TestFile> {
+  void keepOnly(bool Function(TestFile) filter) {
+    removeWhere((x) => !filter(x));
+  }
+}
+
+extension TestFileExtension on TestFile {
+  String get packageName {
+    final segments = Uri.parse(uriString).pathSegments;
+    final index = segments.lastIndexOf('test');
+    return segments[index - 1];
   }
 }

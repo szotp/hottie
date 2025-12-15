@@ -22,15 +22,15 @@ Future<VmService?> vmServiceConnect() async {
 
 typedef RelativePath = String;
 
-extension type Files(Set<Uri> uris) {
+extension type const Files(Set<String> uris) {
   factory Files.decode(String route) {
-    final testPaths = (jsonDecode(route) as List).cast<RelativePath>().map(Uri.parse).toSet();
+    final testPaths = (jsonDecode(route) as List).cast<RelativePath>().toSet();
     return Files(testPaths);
   }
 
-  static final empty = Files(const {});
+  static const empty = Files({});
 
-  String encode() => jsonEncode(uris.map((x) => x.toString()).toList());
+  String encode() => jsonEncode(uris.map((x) => x).toList());
 
   String describe() {
     if (uris.length > 3) {
@@ -42,22 +42,14 @@ extension type Files(Set<Uri> uris) {
 }
 
 class ScriptChangeChecker {
-  ScriptChangeChecker(this._vm) {
-    // first check to determine a baseline
-    _load().withLogging();
-  }
+  ScriptChangeChecker(this._vm, this.isolateId);
+  final String isolateId;
   final VmService _vm;
-
-  Future<void> _load() async {
-    final info = await _vm.getVM();
-    final isolateId = info.isolates!.first.id!;
-    checkLibraries(isolateId).withLogging();
-  }
 
   /// script.relativePath -> script.id
   Map<RelativePath, String>? _previousState; // map from script uri to script hash
 
-  Future<Files> checkLibraries(String isolateId) async {
+  Future<Files> checkLibraries() async {
     logger.fine('Check libraries at $isolateId');
     final sw = Stopwatch();
     sw.start();
@@ -76,13 +68,14 @@ class ScriptChangeChecker {
       }
     }
     _previousState = currentState;
-    return Files(changed.map(Uri.parse).toSet());
+    return Files(changed.toSet());
   }
 
   Stream<Files> observe() async* {
+    await checkLibraries();
     final vm = _vm;
-    vm.streamListen('Isolate').withLogging();
-    yield* vm.onIsolateEvent.where((event) => event.kind == 'IsolateReload').asyncMap((event) => checkLibraries(event.isolate!.id!));
+    vm.streamListen(EventStreams.kIsolate).withLogging();
+    yield* vm.onIsolateEvent.where((event) => event.kind == EventKind.kIsolateReload).asyncMap((event) => checkLibraries());
   }
 
   Future<List<ScriptRef>> _findTestScripts(String isolateId) async {
