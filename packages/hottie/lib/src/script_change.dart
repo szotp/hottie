@@ -71,11 +71,11 @@ class ScriptChangeChecker {
     return Files(changed.toSet());
   }
 
-  Stream<Files> observe() async* {
+  Stream<Future<Files>> observe() async* {
     await checkLibraries();
     final vm = _vm;
     vm.streamListen(EventStreams.kIsolate).withLogging();
-    yield* vm.onIsolateEvent.where((event) => event.kind == EventKind.kIsolateReload).asyncMap((event) => checkLibraries());
+    yield* vm.onIsolateEvent.where((event) => event.kind == EventKind.kIsolateReload).map((event) => checkLibraries());
   }
 
   Future<List<ScriptRef>> _findTestScripts(String isolateId) async {

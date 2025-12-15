@@ -15,9 +15,11 @@ import 'src/script_change.dart';
 import 'src/utils/logger.dart';
 
 typedef TestMain = void Function();
+typedef TestConfigurationFunc = Iterable<TestFile> Function(IsolateArguments);
 
 Files startResultsReceiver() {
-  const failed = Files({});
+  // ignore: prefer_const_constructors - not really const
+  final failed = Files({});
 
   final resultsPort = ReceivePort();
   IsolateNameServer.removePortNameMapping('hottie.resultsPort');
@@ -40,7 +42,13 @@ class TestFile {
   final TestMain testMain;
 }
 
-Future<void> mainWatch({bool runImmediately = false}) async {
+Future<void> hottie(List<TestFile> allTests, TestConfigurationFunc func) async {
+  final routeName = PlatformDispatcher.instance.defaultRouteName;
+  final input = IsolateArguments.decode(routeName);
+  if (Spawner) if (input != null) {
+    return _runTests(func(input).toList());
+  }
+
   final vm = await vmServiceConnect();
 
   if (vm == null) {
@@ -50,24 +58,19 @@ Future<void> mainWatch({bool runImmediately = false}) async {
 
   final knownFailed = startResultsReceiver();
 
-  if (runImmediately) {
-    spawn('hottieIsolated', '');
-  }
-
   final scriptChange = ScriptChangeChecker(vm, Service.getIsolateId(Isolate.current)!);
 
   logger.info('Waiting for hot reload');
-  await scriptChange.observe().forEach((changedTests) async {
+  await scriptChange.observe().forEach((changedTestsFuture) async {
+    final changedTests = await changedTestsFuture;
+
     logger.info('Spawning for: ${changedTests.describe()}');
 
+    // ignore: unused_local_variable xx
     final arguments = IsolateArguments(knownFailed, changedTests);
 
-    spawn('hottieIsolated', arguments.encode());
+    spawn('main', arguments.encode());
   });
-}
-
-Future<void> mainRunTests(RunTestsConfiguration configuration) {
-  return _mainRunTests(configuration);
 }
 
 class HottieBinding extends AutomatedTestWidgetsFlutterBinding {
@@ -82,10 +85,15 @@ class HottieBinding extends AutomatedTestWidgetsFlutterBinding {
 }
 
 class IsolateArguments {
-  IsolateArguments(this.failed, this.changed);
+  IsolateArguments(this.failed, this.changedTests);
 
-  factory IsolateArguments.decode(String encoded) {
+  static IsolateArguments? decode(String encoded) {
     final parts = encoded.split('|');
+
+    if (parts.length != 2) {
+      return null;
+    }
+
     return IsolateArguments(
       Files.decode(parts[0]),
       Files.decode(parts[1]),
@@ -93,33 +101,14 @@ class IsolateArguments {
   }
 
   final Files failed;
-  final Files changed;
+  final Files changedTests;
 
   String encode() {
-    return '${failed.encode()}|${changed.encode()}';
+    return '${failed.encode()}|${changedTests.encode()}';
   }
 }
 
-class RunTestsConfiguration {
-  factory RunTestsConfiguration.from(List<TestFile> tests) {
-    return RunTestsConfiguration._(tests.toList());
-  }
-
-  RunTestsConfiguration._(this.tests);
-
-  final List<TestFile> tests;
-  final IsolateArguments arguments = IsolateArguments.decode(PlatformDispatcher.instance.defaultRouteName);
-
-  void onlyChangedTests() {
-    tests.removeWhere(arguments.changed.containsNot);
-  }
-
-  void onlyPackage(PackageName name) {
-    tests.keepOnly((x) => x.packageName == name.name);
-  }
-}
-
-Future<void> _mainRunTests(RunTestsConfiguration configuration) async {
+Future<void> _runTests(List<TestFile> tests) async {
   final binding = HottieBinding.instance;
   mockFlutterAssets();
 
@@ -127,7 +116,7 @@ Future<void> _mainRunTests(RunTestsConfiguration configuration) async {
   final failed = <String>[];
 
   final saved = Directory.current;
-  for (final entry in configuration.tests) {
+  for (final entry in tests) {
     if (binding.didHotReloadWhileTesting) {
       // hot reload is not supported, we have to quit asap to prevent crashes
       logger.warning('Hot reload detected. Exiting tests');
@@ -140,14 +129,14 @@ Future<void> _mainRunTests(RunTestsConfiguration configuration) async {
     try {
       Directory.current = uri.packagePath;
 
-      print('TESTING: ${uri.relativePath}');
+      logger.info('TESTING: ${uri.relativePath}');
       goldenFileComparator = LocalFileComparator(uri);
       passedTest = await directRunTests(
         entry.testMain,
         //reporterFactory: (engine) => GithubReporter.watch(engine, stdout, printPlatform: false, printPath: true),
       ).timeout(const Duration(seconds: 10));
     } catch (error, stackTrace) {
-      print(error);
+      print('ERROR: $error');
       print(stackTrace);
     }
 

@@ -13,10 +13,11 @@ final Logger logger = printer;
 
 abstract class Logger {
   void log(LogLevel level, Object message, [StackTrace? stackTrace]);
+
+  void fine(Object message) => log(LogLevel.verbose, message);
   void info(Object message) => log(LogLevel.info, message);
   void warning(Object message) => log(LogLevel.info, message);
-  void fine(Object message) => log(LogLevel.info, message);
-  void severe(Object message, StackTrace stackTrace) => log(LogLevel.info, message);
+  void severe(Object message, StackTrace stackTrace) => log(LogLevel.error, message, stackTrace);
 }
 
 class LogLevel {
@@ -34,8 +35,6 @@ class LogLevel {
 }
 
 class ConsoleOutput extends Logger {
-  final _startTime = DateTime.now();
-
   static const _padding = '                 ';
 
   String _timePen(String input) => input;
@@ -44,8 +43,11 @@ class ConsoleOutput extends Logger {
   @override
   void log(LogLevel level, Object message, [StackTrace? stackTrace]) {
     final timestamp = DateTime.now();
-    final time = timestamp.difference(_startTime);
-    final timeString = _timePen(time.toString());
+    final hh = timestamp.hour.toString().padLeft(2, '0');
+    final mm = timestamp.minute.toString().padLeft(2, '0');
+    final ss = timestamp.second.toString().padLeft(2, '0');
+    final sss = timestamp.millisecond.toString().padLeft(3, '0');
+    final timeString = _timePen('$hh:$mm:$ss:$sss');
 
     final trace = Trace.from(stackTrace ?? StackTrace.current);
     final location = trace.frames.where((x) => !x.location.contains('logger.dart') && !x.location.contains('matcher')).firstOrNull?.location;
