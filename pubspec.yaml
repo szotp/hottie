@@ -12,5 +12,7 @@ environment:
 
 dev_dependencies:
   very_good_analysis:
+  hottie:
+    path: packages/hottie
   flutter_test:
     sdk: flutter

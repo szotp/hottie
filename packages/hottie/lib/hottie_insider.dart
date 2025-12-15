@@ -7,8 +7,8 @@ import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:test_core/src/direct_run.dart';
-import 'package:test_core/src/runner/reporter/github.dart';
-import 'package:vm_service/vm_service.dart';
+//import 'package:test_core/src/runner/reporter/github.dart';
+import 'package:vm_service/vm_service.dart' hide Isolate;
 
 import 'src/ffi.dart';
 import 'src/mock_assets.dart';
@@ -66,14 +66,29 @@ Future<void> mainWatch({bool runImmediately = false}) async {
   });
 }
 
-Future<void> mainRunTests(TestMap tests, {Set<TestFile>? allowed, Set<TestFile>? skip}) async {
+Future<void> mainRunTests(TestMap tests, {Set<TestFile>? allowed, Set<TestFile>? skip}) {
+  return _mainRunTests(tests, allowed: allowed, skip: skip);
+}
+
+class HottieBinding extends AutomatedTestWidgetsFlutterBinding {
+  bool didHotReloadWhileTesting = false;
+
+  @override
+  Future<void> reassembleApplication() async {
+    didHotReloadWhileTesting = true;
+  }
+
+  static final instance = HottieBinding();
+}
+
+Future<void> _mainRunTests(TestMap tests, {Set<TestFile>? allowed, Set<TestFile>? skip}) async {
   final entries = tests.where((x) {
     if (skip?.contains(x) ?? false) {
       return false;
     }
     return allowed?.contains(x) ?? true;
   }).toList();
-  AutomatedTestWidgetsFlutterBinding.ensureInitialized();
+  final binding = HottieBinding.instance;
   mockFlutterAssets();
 
   final passed = <Uri>[];
@@ -81,6 +96,12 @@ Future<void> mainRunTests(TestMap tests, {Set<TestFile>? allowed, Set<TestFile>?
 
   final saved = Directory.current;
   for (final entry in entries) {
+    if (binding.didHotReloadWhileTesting) {
+      // hot reload is not supported, we have to quit asap to prevent crashes
+      logger.warning('Hot reload detected. Exiting tests');
+      Isolate.exit();
+    }
+
     var passedTest = false;
     final uri = Uri.parse(entry.uriString);
 
@@ -91,7 +112,7 @@ Future<void> mainRunTests(TestMap tests, {Set<TestFile>? allowed, Set<TestFile>?
       goldenFileComparator = LocalFileComparator(uri);
       passedTest = await directRunTests(
         entry.testMain,
-        reporterFactory: (engine) => GithubReporter.watch(engine, stdout, printPlatform: false, printPath: true),
+        //reporterFactory: (engine) => GithubReporter.watch(engine, stdout, printPlatform: false, printPath: true),
       ).timeout(const Duration(seconds: 10));
     } catch (error, stackTrace) {
       print(error);
