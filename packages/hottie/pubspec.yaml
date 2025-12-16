@@ -11,13 +11,15 @@ dependencies:
   vm_service:
   stack_trace:
   args: ^2.7.0
-  test: any
-  test_core: any
+  test_api: any
   ffi: any
   flutter:
     sdk: flutter
   flutter_test:
     sdk: flutter
+
+dev_dependencies: 
+  test: any
 
 
 executables:

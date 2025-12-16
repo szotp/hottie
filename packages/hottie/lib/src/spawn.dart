@@ -19,19 +19,19 @@ class Spawn<Input, Output> {
 
   final Future<Output> Function(Future<Input>) function;
 
-  Future<O> compute<T, O>(Future<O> Function(Future<T>) func, Future<T> arg) async {
+  Future<Output> compute(Future<Input> arg) async {
     final portName = '_isolated.${DateTime.now().microsecondsSinceEpoch}';
     final port = ReceivePort();
     final registered = IsolateNameServer.registerPortWithName(port.sendPort, portName);
     assert(registered, 'Failed to register port');
     final portCompleter = Completer<SendPort>();
-    final resultsCompleter = Completer<O>();
+    final resultsCompleter = Completer<Output>();
 
     port.forEach((message) async {
       if (message is SendPort) {
         portCompleter.complete(message);
         message.send(await arg);
-      } else if (message is O) {
+      } else if (message is Output) {
         resultsCompleter.complete(message);
       } else {
         logger.warning('Unknown message $message in spawn');
@@ -41,7 +41,13 @@ class Spawn<Input, Output> {
     _spawn('main', portName);
 
     try {
-      await portCompleter.future.timeout(const Duration(seconds: 1));
+      try {
+        await portCompleter.future.timeout(const Duration(seconds: 900));
+      } catch (_) {
+        // in case user added a breakpoint
+        await portCompleter.future.timeout(const Duration(milliseconds: 100));
+      }
+
       final result = await resultsCompleter.future;
       return result;
     } finally {
