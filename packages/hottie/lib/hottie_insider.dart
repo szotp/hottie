@@ -26,7 +26,7 @@ Future<void> hottie(TestConfigurationFunc func) async {
   final vm = await vmServiceConnect();
 
   if (vm == null) {
-    print('VM not detected. Exiting.');
+    logger.warning('VM not detected. Exiting.');
     return;
   }
 
@@ -48,8 +48,6 @@ Future<void> hottie(TestConfigurationFunc func) async {
     logger.fine('Tests finished');
   });
 }
-
-extension type const PackageName(String name) {}
 
 typedef TestMain = void Function();
 

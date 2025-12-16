@@ -4,15 +4,15 @@ import 'package:hottie/hottie_insider.dart';
 
 void _someTestMain() {} // {imports}
 
-extension PackageNames on PackageName {
-  static const hottie = PackageName('hottie'); // {packages}
+enum PackageId {
+  some_package, // {packages}
 }
 
-enum TestId implements TestFile {
-  someTest('', _someTestMain), // {tests}
+enum TestFileId implements TestFile {
+  some_test('', _someTestMain), // {tests}
   ;
 
-  const TestId(this.uriString, this.testMain);
+  const TestFileId(this.uriString, this.testMain);
 
   @override
   final String uriString;

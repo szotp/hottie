@@ -99,7 +99,7 @@ Future<Uri> generateMain(TestFileHandles testPaths, {bool overrideMain = false})
   }
 
   for (final package in testPaths.packages) {
-    packages.writeln("  static const $package = PackageName('$package');");
+    packages.writeln('  $package,');
   }
 
   if (!Directory('build').existsSync()) {

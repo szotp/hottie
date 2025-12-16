@@ -3,9 +3,9 @@
 import '../../hottie_insider.dart';
 import 'hottie_tests.g.dart';
 
-/// Observe hot reload events to spawn test cycles.
-Future<void> main() => hottie(filesForTesting);
+Future<void> main() => hottie(onHotReload);
 
-Iterable<TestId> filesForTesting(IsolateArguments arguments) {
-  return TestId.values.where(arguments.changedTests.contains);
+/// Returns files that should be tested
+TestFiles onHotReload(IsolateArguments arguments) {
+  return TestFileId.values.where(arguments.changedTests.contains);
 }
