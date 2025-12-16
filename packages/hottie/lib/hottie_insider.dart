@@ -4,49 +4,23 @@
 import 'dart:developer';
 import 'dart:io';
 import 'dart:isolate';
-import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:test_core/src/direct_run.dart';
 
-import 'src/ffi.dart';
 import 'src/mock_assets.dart';
 import 'src/script_change.dart';
+import 'src/spawn.dart';
 import 'src/utils/logger.dart';
 
-typedef TestMain = void Function();
-typedef TestConfigurationFunc = Iterable<TestFile> Function(IsolateArguments);
+typedef TestFiles = Iterable<TestFile>;
+typedef TestConfigurationFunc = TestFiles Function(IsolateArguments);
 
-Files startResultsReceiver() {
-  // ignore: prefer_const_constructors - not really const
-  final failed = Files({});
+const Spawn<TestFiles, Files> _spawn = Spawn(_runTests);
 
-  final resultsPort = ReceivePort();
-  IsolateNameServer.removePortNameMapping('hottie.resultsPort');
-  IsolateNameServer.registerPortWithName(resultsPort.sendPort, 'hottie.resultsPort');
-  resultsPort.forEach((message) {
-    failed.uris.clear();
-    failed.uris.addAll(Files.decode(message as String).uris);
-    for (final file in failed!.uris) {
-      print(file);
-    }
-  }).withLogging();
-  return failed;
-}
-
-extension type const PackageName(String name) {}
-
-class TestFile {
-  const TestFile(this.uriString, this.testMain);
-  final String uriString;
-  final TestMain testMain;
-}
-
-Future<void> hottie(List<TestFile> allTests, TestConfigurationFunc func) async {
-  final routeName = PlatformDispatcher.instance.defaultRouteName;
-  final input = IsolateArguments.decode(routeName);
-  if (Spawner) if (input != null) {
-    return _runTests(func(input).toList());
+Future<void> hottie(TestConfigurationFunc func) async {
+  if (await _spawn.runIfIsolate()) {
+    return;
   }
 
   final vm = await vmServiceConnect();
@@ -56,21 +30,33 @@ Future<void> hottie(List<TestFile> allTests, TestConfigurationFunc func) async {
     return;
   }
 
-  final knownFailed = startResultsReceiver();
-
   final scriptChange = ScriptChangeChecker(vm, Service.getIsolateId(Isolate.current)!);
+  var failed = Files.empty;
 
   logger.info('Waiting for hot reload');
   await scriptChange.observe().forEach((changedTestsFuture) async {
-    final changedTests = await changedTestsFuture;
+    final future = changedTestsFuture.then((changedFiles) {
+      logger.info('Spawning for: ${changedFiles.describe()}');
 
-    logger.info('Spawning for: ${changedTests.describe()}');
+      // ignore: unused_local_variable xx
+      final arguments = IsolateArguments(failed, changedFiles);
+      return func(arguments);
+    });
 
-    // ignore: unused_local_variable xx
-    final arguments = IsolateArguments(knownFailed, changedTests);
-
-    spawn('main', arguments.encode());
+    logger.fine('Spawning...');
+    failed = await _spawn.compute(_runTests, future);
+    logger.fine('Tests finished');
   });
+}
+
+extension type const PackageName(String name) {}
+
+typedef TestMain = void Function();
+
+class TestFile {
+  const TestFile(this.uriString, this.testMain);
+  final String uriString;
+  final TestMain testMain;
 }
 
 class HottieBinding extends AutomatedTestWidgetsFlutterBinding {
@@ -108,7 +94,7 @@ class IsolateArguments {
   }
 }
 
-Future<void> _runTests(List<TestFile> tests) async {
+Future<Files> _runTests(Future<TestFiles> testsFuture) async {
   final binding = HottieBinding.instance;
   mockFlutterAssets();
 
@@ -116,6 +102,7 @@ Future<void> _runTests(List<TestFile> tests) async {
   final failed = <String>[];
 
   final saved = Directory.current;
+  final tests = await testsFuture;
   for (final entry in tests) {
     if (binding.didHotReloadWhileTesting) {
       // hot reload is not supported, we have to quit asap to prevent crashes
@@ -149,7 +136,7 @@ Future<void> _runTests(List<TestFile> tests) async {
   Directory.current = saved;
 
   print('Failed: ${failed.length}. Passed: ${passed.length}');
-  IsolateNameServer.lookupPortByName('hottie.resultsPort')?.send(Files(failed.toSet()).encode());
+  return Files(failed.toSet());
 }
 
 extension on Uri {
