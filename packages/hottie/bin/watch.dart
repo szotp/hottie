@@ -5,6 +5,7 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:hottie/src/utils/logger.dart';
+import 'package:hottie/src/watch.dart';
 
 import 'generate.dart';
 
@@ -39,5 +40,10 @@ class WatchCommand extends Command<void> {
     } catch (_) {
       // in debug console
     }
+
+    final watcher = watchDartFiles(['.']);
+    await watcher.forEach((changedFile) {
+      process.stdin.write('r');
+    });
   }
 }

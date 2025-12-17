@@ -21,20 +21,22 @@ abstract class Logger {
 }
 
 class LogLevel {
-  const LogLevel(this.prefix);
+  const LogLevel(this.prefix, this.importance);
 
   final String prefix;
+  final int importance;
 
-  static const verbose = LogLevel('F ');
-  static const info = LogLevel('ℹ️ ');
-  static const warning = LogLevel('⚠️ ');
-  static const error = LogLevel('‼️ ');
-  static const tragedy = LogLevel('🚨');
+  static const verbose = LogLevel('F ', 0);
+  static const info = LogLevel('ℹ️ ', 1);
+  static const warning = LogLevel('⚠️ ', 2);
+  static const error = LogLevel('‼️ ', 3);
+  static const tragedy = LogLevel('🚨', 4);
 
   String format(String message) => message;
 }
 
 class ConsoleOutput extends Logger {
+  int minimumImportance = 1;
   static const _padding = '                 ';
 
   String _timePen(String input) => input;
@@ -42,6 +44,10 @@ class ConsoleOutput extends Logger {
 
   @override
   void log(LogLevel level, Object message, [StackTrace? stackTrace]) {
+    if (level.importance < minimumImportance) {
+      return;
+    }
+
     final timestamp = DateTime.now();
     final hh = timestamp.hour.toString().padLeft(2, '0');
     final mm = timestamp.minute.toString().padLeft(2, '0');
@@ -105,7 +111,7 @@ class StdoutProgress {
     stdout.write('$_label... (0.0s)');
     _timer = Timer.periodic(const Duration(milliseconds: 100), (_) {
       assert(_timer != null, '');
-      print();
+      emit();
     });
   }
   final void Function() onFinished;
@@ -113,13 +119,13 @@ class StdoutProgress {
   Timer? _timer;
   String _label;
 
-  void print() {
+  void emit() {
     final elapsed = (_watch.elapsed.inMilliseconds / 1000).toStringAsFixed(1);
     printer.updateLine('$_label... (${elapsed}s)');
   }
 
   void finish(String? finalInfo) {
-    print();
+    emit();
     _timer?.cancel();
     _timer = null;
 
@@ -134,6 +140,6 @@ class StdoutProgress {
 
   void update(String newLabel) {
     _label = newLabel;
-    print();
+    emit();
   }
 }

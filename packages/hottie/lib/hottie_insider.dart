@@ -36,7 +36,7 @@ Future<void> hottie(TestConfigurationFunc func) async {
   logger.info('Waiting for hot reload');
   await scriptChange.observe().forEach((changedTestsFuture) async {
     final future = changedTestsFuture.then((changedFiles) {
-      logger.info('Spawning for: ${changedFiles.describe()}');
+      logger.fine('Spawning for: ${changedFiles.describe()}');
       final arguments = IsolateArguments(failed, changedFiles);
       return func(arguments);
     });

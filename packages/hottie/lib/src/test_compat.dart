@@ -13,6 +13,8 @@ import 'package:test_api/src/backend/suite.dart';
 import 'package:test_api/src/backend/suite_platform.dart';
 import 'package:test_api/src/backend/test.dart';
 
+import 'utils/logger.dart';
+
 Future<bool> runTests(void Function() testMain, Reporter reporter) {
   return Invoker.guard<Future<bool>>(() async {
     final declarer = Declarer();
@@ -238,11 +240,10 @@ class Reporter {
       message += suffix;
     }
     color ??= '';
-    final duration = _stopwatch.elapsed;
     final buffer = StringBuffer();
 
     // \r moves back to the beginning of the current line.
-    buffer.write('${_timeString(duration)} ');
+    buffer.write('  ');
     buffer.write(_green);
     buffer.write('+');
     buffer.write(passed.length);
@@ -270,13 +271,6 @@ class Reporter {
     log(buffer.toString());
   }
 
-  /// Returns a representation of [duration] as `MM:SS`.
-  String _timeString(Duration duration) {
-    final minutes = duration.inMinutes.toString().padLeft(2, '0');
-    final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
-    return '$minutes:$seconds';
-  }
-
   /// Returns a description of [liveTest].
   ///
   /// This differs from the test's own description in that it may also include
@@ -293,7 +287,7 @@ class Reporter {
   void log(String message) {
     // We centralize all the prints in this file through this one method so that
     // in principle we can reroute the output easily should we need to.
-    print(message); // ignore: avoid_print
+    logger.info(message);
   }
 }
 

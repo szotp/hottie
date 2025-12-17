@@ -5,6 +5,7 @@ import 'dart:async';
 
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
+import 'package:hottie/src/utils/logger.dart';
 
 import 'generate.dart';
 import 'watch.dart';
@@ -36,7 +37,7 @@ class _CommandRunner extends CommandRunner<void> {
   @override
   Future<void> runCommand(ArgResults args) async {
     if (args.flag('version')) {
-      print('hottie $version');
+      logger.info('hottie $version');
       return;
     }
 

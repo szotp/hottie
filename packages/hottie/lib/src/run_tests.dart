@@ -20,6 +20,10 @@ Future<Files> _runTests(Future<TestFiles> testsFuture) async {
 
   final saved = Directory.current;
   final tests = await testsFuture;
+  if (tests.isEmpty) {
+    return Files.empty;
+  }
+
   final reporter = Reporter();
   for (final entry in tests) {
     if (binding.didHotReloadWhileTesting) {
@@ -37,13 +41,12 @@ Future<Files> _runTests(Future<TestFiles> testsFuture) async {
       goldenFileComparator = LocalFileComparator(uri);
       await runTests(entry.testMain, reporter).timeout(const Duration(seconds: 10));
     } catch (error, stackTrace) {
-      print('ERROR: $error');
-      print(stackTrace);
+      logger.severe(error, stackTrace);
     }
   }
   Directory.current = saved;
 
-  print('Failed: ${reporter.failed.length}. Passed: ${reporter.passed.length}');
+  logger.info('TESTING FINISHED. Failed: ${reporter.failed.length}. Passed: ${reporter.passed.length}.');
   return const Files({});
 }
 
