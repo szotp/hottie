@@ -16,16 +16,29 @@ const Spawn<RunTestsRequest, List<FailedTest>> spawnRunTests = Spawn(_runTests);
 class RunTestsRequest {
   /// Files that should be tested
   List<TestFile> tests = [];
-  int _shards = 1;
-
-  int get shards => _shards;
-
-  set shards(int value) {
-    assert(value >= 1 && value <= 8, 'Value must be between 1 and 8');
-    _shards = value;
-  }
 
   bool logging = true;
+
+  Duration timeout = const Duration(minutes: 1);
+
+  List<RunTestsRequest> split(int shards) {
+    final results = List.generate(shards, (x) => RunTestsRequest()..logging = logging);
+
+    for (final (i, test) in tests.indexed) {
+      results[i % shards].tests.add(test);
+    }
+
+    return results;
+  }
+
+  @override
+  String toString() {
+    if (tests.length > 5) {
+      return '${tests.length} files';
+    }
+
+    return tests.join(', ');
+  }
 }
 
 Future<List<FailedTest>> _runTests(Future<RunTestsRequest> testsFuture) async {
@@ -41,7 +54,7 @@ Future<List<FailedTest>> _runTests(Future<RunTestsRequest> testsFuture) async {
 
   final reporter = Reporter();
   stdout.writeln();
-  logger.info('TESTING STARTED for ${tests.length} files.');
+  logger.info('TESTING STARTED for $request.');
   for (final entry in tests) {
     if (binding.didHotReloadWhileTesting) {
       // hot reload is not supported, we have to quit asap to prevent crashes
@@ -57,7 +70,7 @@ Future<List<FailedTest>> _runTests(Future<RunTestsRequest> testsFuture) async {
       logger.fine('TESTING: ${uri.relativePath}');
       goldenFileComparator = LocalFileComparator(uri);
       reporter.currentFile = entry;
-      await runTests(entry.testMain, reporter).timeout(const Duration(seconds: 10));
+      await runTests(entry.testMain, reporter);
     } catch (error, stackTrace) {
       logger.severe(error, stackTrace);
     }

@@ -11,7 +11,6 @@ import 'utils/logger.dart';
 external void _ffiSpawn(Pointer<Utf8> entrypoint, Pointer<Utf8> route);
 
 void _spawn(String entrypoint, String route) {
-  print('spawning $route');
   _ffiSpawn(entrypoint.toNativeUtf8(), route.toNativeUtf8());
 }
 
@@ -35,6 +34,7 @@ class Spawn<Input, Output> {
     port.forEach((message) async {
       if (message is SendPort) {
         portCompleter.complete(message);
+        print('port received');
         message.send(await arg);
       } else if (message is Output) {
         resultsCompleter.complete(message);
@@ -45,6 +45,7 @@ class Spawn<Input, Output> {
 
     _spawn('main', portName);
 
+    print('waiting for port');
     try {
       try {
         await portCompleter.future.timeout(const Duration(seconds: 900));

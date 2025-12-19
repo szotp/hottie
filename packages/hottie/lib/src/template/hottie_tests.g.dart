@@ -18,4 +18,6 @@ enum TestFileId implements TestFile {
   final String uriString;
   @override
   final TestMain testMain;
+  @override
+  String toString() => name;
 }
