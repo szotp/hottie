@@ -6,10 +6,10 @@ import 'hottie_tests.g.dart';
 Future<void> main() => hottie(onHotReload);
 
 /// Returns files that should be tested
-Iterable<TestFileId> onHotReload(IsolateArguments arguments) {
+RunTestsRequest onHotReload(IsolateArguments arguments) {
   if (arguments.isInitialRun) {
-    return TestFileId.values;
+    return RunTestsRequest(TestFileId.values);
   }
 
-  return TestFileId.values.where(arguments.changedTests.contains);
+  return RunTestsRequest.changed(TestFileId.values, arguments);
 }

@@ -67,7 +67,11 @@ Future<void> useTemplate(String packageUri, String destinationPath, Map<String, 
     contents[index] = entry.value;
   }
 
-  File(destinationPath).writeAsStringSync(contents.join('\n'));
+  final buffer = StringBuffer();
+  buffer.writeAll(contents, '\n');
+  buffer.writeln();
+
+  File(destinationPath).writeAsStringSync(buffer.toString());
 }
 
 class TestFileHandle {

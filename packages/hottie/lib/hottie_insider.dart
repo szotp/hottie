@@ -2,16 +2,20 @@
 // ignore_for_file: always_use_package_imports necessary for our use case
 
 import 'dart:developer';
+import 'dart:io';
 import 'dart:isolate';
 
 import 'package:flutter_test/flutter_test.dart';
 
 import 'src/run_tests.dart';
 import 'src/script_change.dart';
+import 'src/test_compat.dart';
 import 'src/utils/logger.dart';
 
+export 'src/run_tests.dart' show RunTestsRequest;
+
 typedef TestFiles = Iterable<TestFile>;
-typedef TestConfigurationFunc = TestFiles Function(IsolateArguments);
+typedef TestConfigurationFunc = RunTestsRequest Function(IsolateArguments);
 
 Future<void> hottie(TestConfigurationFunc func) async {
   if (await spawnRunTests.runIfIsolate()) {
@@ -26,11 +30,11 @@ Future<void> hottie(TestConfigurationFunc func) async {
   }
 
   final scriptChange = ScriptChangeChecker(vm, Service.getIsolateId(Isolate.current)!);
-  var failed = Files.empty;
+  var failed = <FailedTest>[];
 
-  final initialTests = func(IsolateArguments(Files.empty, Files.empty, isInitialRun: true)).toList();
-  if (initialTests.isNotEmpty) {
-    await spawnRunTests.compute(Future.value(initialTests.toList()));
+  final request = func(IsolateArguments([], Files.empty, isInitialRun: true));
+  if (request.tests.isNotEmpty) {
+    failed = await spawnRunTests.compute(Future.value(request));
   }
 
   logger.info('Waiting for hot reload');
@@ -70,12 +74,8 @@ class IsolateArguments {
   IsolateArguments(this.failed, this.changedTests, {this.isInitialRun = false});
 
   final bool isInitialRun;
-  final Files failed;
+  final List<FailedTest> failed;
   final Files changedTests;
-
-  String encode() {
-    return '${failed.encode()}|${changedTests.encode()}';
-  }
 }
 
 extension FilesExtension on Files {
@@ -94,5 +94,23 @@ extension TestFileExtension on TestFile {
     final segments = Uri.parse(uriString).pathSegments;
     final index = segments.lastIndexOf('test');
     return segments[index - 1];
+  }
+
+  Uri get uri => Uri.parse(uriString);
+}
+
+extension UriExtension on Uri {
+  String get relativePath {
+    final current = Directory.current.path;
+    if (path.startsWith(current)) {
+      return path.substring(current.length + 1);
+    }
+    return path;
+  }
+
+  String get packagePath {
+    final segments = pathSegments.sublist(0, pathSegments.indexOf('test'));
+    final filePath = Uri(pathSegments: segments, scheme: 'file').toFilePath();
+    return filePath;
   }
 }

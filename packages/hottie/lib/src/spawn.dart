@@ -11,19 +11,24 @@ import 'utils/logger.dart';
 external void _ffiSpawn(Pointer<Utf8> entrypoint, Pointer<Utf8> route);
 
 void _spawn(String entrypoint, String route) {
+  print('spawning $route');
   _ffiSpawn(entrypoint.toNativeUtf8(), route.toNativeUtf8());
 }
 
+var _counter = 0;
+
 class Spawn<Input, Output> {
   const Spawn(this.function);
+  static const _portPrefix = 'port_spawn';
 
   final Future<Output> Function(Future<Input>) function;
 
   Future<Output> compute(Future<Input> arg) async {
-    final portName = '_isolated.${DateTime.now().microsecondsSinceEpoch}';
+    final portName = '$_portPrefix${_counter++}';
     final port = ReceivePort();
+    IsolateNameServer.removePortNameMapping(portName);
     final registered = IsolateNameServer.registerPortWithName(port.sendPort, portName);
-    assert(registered, 'Failed to register port');
+    assert(registered, 'Failed to register port $portName');
     final portCompleter = Completer<SendPort>();
     final resultsCompleter = Completer<Output>();
 
@@ -57,7 +62,7 @@ class Spawn<Input, Output> {
 
   Future<bool> runIfIsolate() async {
     final routeName = PlatformDispatcher.instance.defaultRouteName;
-    if (!routeName.startsWith('_isolated.')) {
+    if (!routeName.startsWith(_portPrefix)) {
       return false;
     }
 

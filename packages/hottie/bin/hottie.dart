@@ -24,6 +24,7 @@ void addGlobalOptions(ArgParser parser) {
 }
 
 Future<void> main(List<String> arguments) async {
+  printer.appendLocation = false;
   await _CommandRunner().run(arguments);
 }
 

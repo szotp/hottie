@@ -1,7 +1,11 @@
 // ignore_for_file: implementation_imports necessary for our use case
 
 import 'dart:async';
+import 'dart:io';
 
+import 'package:flutter/src/foundation/assertions.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:test_api/scaffolding.dart' as test_package;
 import 'package:test_api/src/backend/declarer.dart';
 import 'package:test_api/src/backend/group.dart';
 import 'package:test_api/src/backend/invoker.dart';
@@ -13,18 +17,24 @@ import 'package:test_api/src/backend/suite.dart';
 import 'package:test_api/src/backend/suite_platform.dart';
 import 'package:test_api/src/backend/test.dart';
 
-import 'utils/logger.dart';
+import '../hottie_insider.dart';
 
-Future<bool> runTests(void Function() testMain, Reporter reporter) {
-  return Invoker.guard<Future<bool>>(() async {
-    final declarer = Declarer();
-    declarer.declare(testMain);
-    final group = declarer.build();
-    final suite = Suite(group, SuitePlatform(Runtime.vm));
-    await _runGroup(suite, group, <Group>[], reporter);
-    reporter._onDone();
-    return reporter.failed.isEmpty;
-  })!;
+Future<void> runTests(void Function() testMain, Reporter reporter) async {
+  reportTestException = reporter.reportTestException;
+
+  await runZonedGuarded(() async {
+    await Invoker.guard(() async {
+      final declarer = Declarer();
+      declarer.declare(testMain);
+      final group = declarer.build();
+      final suite = Suite(group, SuitePlatform(Runtime.vm));
+      await _runGroup(suite, group, <Group>[], reporter);
+      reporter._onDone();
+      return reporter.failed.isEmpty;
+    });
+  }, (error, stackTrace) {
+    reporter.failed.add(FailedTest(reporter.currentFile, '<unknown>', [AsyncError(error, stackTrace)]));
+  });
 }
 
 Future<void> _runGroup(
@@ -82,7 +92,7 @@ Future<void> _runLiveTest(
   if (isSuccess) {
     reporter.passed.add(liveTest);
   } else {
-    reporter.failed.add(liveTest);
+    reporter.failed.add(FailedTest(reporter.currentFile, liveTest.individualName, liveTest.errors));
   }
 }
 
@@ -117,7 +127,7 @@ class Reporter {
         _noColor = color ? '\u001b[0m' : '';
 
   final List<LiveTest> passed = <LiveTest>[];
-  final List<LiveTest> failed = <LiveTest>[];
+  final List<FailedTest> failed = <FailedTest>[];
   final List<Test> skipped = <Test>[];
 
   /// The terminal escape for green text, or the empty string if this is Windows
@@ -168,6 +178,8 @@ class Reporter {
   /// The set of all subscriptions to various streams.
   final Set<StreamSubscription<void>> _subscriptions = <StreamSubscription<void>>{};
 
+  late TestFile currentFile;
+
   /// A callback called when the engine begins running [liveTest].
   void _onTestStarted(LiveTest liveTest) {
     if (!_stopwatch.isRunning) {
@@ -207,8 +219,6 @@ class Reporter {
       return;
     }
     _progressLine(_description(liveTest), suffix: ' $_bold$_red[E]$_noColor');
-    log(_indent(error.toString()));
-    log(_indent('$stackTrace'));
   }
 
   /// A callback called when the engine is finished running tests.
@@ -240,10 +250,10 @@ class Reporter {
       message += suffix;
     }
     color ??= '';
-    final buffer = StringBuffer();
-
+    final duration = _stopwatch.elapsed;
+    final buffer = StringBuffer('{PROGRESS}');
     // \r moves back to the beginning of the current line.
-    buffer.write('  ');
+    buffer.write('${_timeString(duration)} ');
     buffer.write(_green);
     buffer.write('+');
     buffer.write(passed.length);
@@ -268,7 +278,14 @@ class Reporter {
     buffer.write(message);
     buffer.write(_noColor);
 
-    log(buffer.toString());
+    stdout.writeln(buffer.toString());
+  }
+
+  /// Returns a representation of [duration] as `MM:SS`.
+  String _timeString(Duration duration) {
+    final minutes = duration.inMinutes.toString().padLeft(2, '0');
+    final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
   }
 
   /// Returns a description of [liveTest].
@@ -285,30 +302,18 @@ class Reporter {
 
   /// Print the message to the console.
   void log(String message) {
-    // We centralize all the prints in this file through this one method so that
-    // in principle we can reroute the output easily should we need to.
-    logger.info(message);
+    // add to failed test info
+  }
+
+  void reportTestException(FlutterErrorDetails details, String testDescription) {
+    test_package.registerException(details.exception, details.stack ?? StackTrace.current);
   }
 }
 
-String _indent(String string, {int? size, String? first}) {
-  size ??= first == null ? 2 : first.length;
-  return _prefixLines(string, ' ' * size, first: first);
-}
+class FailedTest {
+  FailedTest(this.file, this.name, this.errors);
 
-String _prefixLines(String text, String prefix, {String? first, String? last, String? single}) {
-  first ??= prefix;
-  last ??= prefix;
-  single ??= first;
-  final lines = text.split('\n');
-  if (lines.length == 1) {
-    return '$single$text';
-  }
-  final buffer = StringBuffer('$first${lines.first}\n');
-  // Write out all but the first and last lines with [prefix].
-  for (final line in lines.skip(1).take(lines.length - 2)) {
-    buffer.writeln('$prefix$line');
-  }
-  buffer.write('$last${lines.last}');
-  return buffer.toString();
+  final TestFile file;
+  final String name;
+  final List<AsyncError> errors;
 }

@@ -6,11 +6,11 @@
     "configurations": [
         {
             "console": "terminal",
-            "name": "example (hottie)",
+            "name": "hottie watch",
             "request": "launch",
             "type": "dart",
-            "program": "../hottie/bin/hottie.dart",
-            "cwd": "packages/example",
+            "program": "packages/hottie/bin/hottie.dart",
+            "cwd": "${workspaceFolder}",
             "env": {
                 "PATH": "${env:PATH}:${workspaceFolder}/.fvm/flutter_sdk/bin"
             },

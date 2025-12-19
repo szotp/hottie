@@ -7,24 +7,37 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../hottie_insider.dart';
 import 'mock_assets.dart';
-import 'script_change.dart';
 import 'spawn.dart';
 import 'test_compat.dart';
 import 'utils/logger.dart';
 
-const Spawn<TestFiles, Files> spawnRunTests = Spawn(_runTests);
+const Spawn<RunTestsRequest, List<FailedTest>> spawnRunTests = Spawn(_runTests);
 
-Future<Files> _runTests(Future<TestFiles> testsFuture) async {
+class RunTestsRequest {
+  RunTestsRequest(this.tests, {this.logging = true});
+
+  factory RunTestsRequest.changed(List<TestFile> allTests, IsolateArguments arguments) {
+    return RunTestsRequest(allTests.where(arguments.changedTests.contains).toList());
+  }
+
+  final List<TestFile> tests;
+  final bool logging;
+}
+
+Future<List<FailedTest>> _runTests(Future<RunTestsRequest> testsFuture) async {
   final binding = HottieBinding.instance;
   mockFlutterAssets();
 
   final saved = Directory.current;
-  final tests = await testsFuture;
+  final request = await testsFuture;
+  final tests = request.tests;
   if (tests.isEmpty) {
-    return Files.empty;
+    return [];
   }
 
   final reporter = Reporter();
+  stdout.writeln();
+  logger.info('TESTING STARTED for ${tests.length} files.');
   for (final entry in tests) {
     if (binding.didHotReloadWhileTesting) {
       // hot reload is not supported, we have to quit asap to prevent crashes
@@ -37,8 +50,9 @@ Future<Files> _runTests(Future<TestFiles> testsFuture) async {
     try {
       Directory.current = uri.packagePath;
 
-      logger.info('TESTING: ${uri.relativePath}');
+      logger.fine('TESTING: ${uri.relativePath}');
       goldenFileComparator = LocalFileComparator(uri);
+      reporter.currentFile = entry;
       await runTests(entry.testMain, reporter).timeout(const Duration(seconds: 10));
     } catch (error, stackTrace) {
       logger.severe(error, stackTrace);
@@ -46,22 +60,15 @@ Future<Files> _runTests(Future<TestFiles> testsFuture) async {
   }
   Directory.current = saved;
 
+  stdout.writeln();
+
+  for (final test in reporter.failed) {
+    final lines = [
+      '${test.file.uri.relativePath} ${test.name}',
+      ...test.errors,
+    ];
+    logger.warning(lines.join('\n'));
+  }
   logger.info('TESTING FINISHED. Failed: ${reporter.failed.length}. Passed: ${reporter.passed.length}.');
-  return const Files({});
-}
-
-extension on Uri {
-  String get relativePath {
-    final current = Directory.current.path;
-    if (path.startsWith(current)) {
-      return path.substring(current.length + 1);
-    }
-    return path;
-  }
-
-  String get packagePath {
-    final segments = pathSegments.sublist(0, pathSegments.indexOf('test'));
-    final filePath = Uri(pathSegments: segments, scheme: 'file').toFilePath();
-    return filePath;
-  }
+  return reporter.failed;
 }

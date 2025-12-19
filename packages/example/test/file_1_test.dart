@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-const value = 3;
+const value = 2;
 
 void main() {
   test('empty', () {});
@@ -24,7 +24,7 @@ void main() {
       final node = tester.getSemantics(find.byWidget(text));
       expect(node.label, equals('Hello world!'));
     },
-    skip: true,
+    skip: false,
   );
 
   test('async', () async {

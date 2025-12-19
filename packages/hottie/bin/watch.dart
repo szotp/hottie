@@ -1,6 +1,7 @@
 // ignore_for_file: avoid_print user interaction
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
@@ -29,10 +30,18 @@ class WatchCommand extends Command<void> {
       '--no-pub',
       '--device-connection',
       'attached',
+      '--dart-define',
+      'HOTTIE_WATCH=true',
     ]);
 
     process.stderr.listen(stderr.add);
-    process.stdout.listen(stdout.add);
+    process.stdout.transform(utf8.decoder).transform(const LineSplitter()).forEach((line) {
+      if (line.contains(progressPlaceholder)) {
+        stdout.write(line.replaceFirst(progressPlaceholder, ansiReplaceLine));
+      } else {
+        stdout.writeln(line);
+      }
+    }).withLogging();
     stdin.listen(process.stdin.add);
 
     try {

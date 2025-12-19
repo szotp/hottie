@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'utils/logger.dart';
+
 String _pathJoin(String a, String b) {
   return '$a${Platform.pathSeparator}$b';
 }
@@ -47,7 +49,7 @@ Uri findAssetsFolderPath() {
 
 /// Setup mocking of platform assets if `UNIT_TEST_ASSETS` is defined.
 void mockFlutterAssets() {
-  const appName = 'fuck';
+  const appName = 'app';
   final assetFolderPath = findAssetsFolderPath().toFilePath();
 
   const prefix = 'packages/$appName}/';
@@ -72,17 +74,20 @@ void mockFlutterAssets() {
         // For tests in package, it will load assets with its own package prefix.
         // In this case, we do a best-effort look up.
         if (!key.startsWith(prefix)) {
+          logger.warning('Failed to provide asset $key');
           return null;
         }
 
         key = key.replaceFirst(prefix, '');
         asset = File(_pathJoin(assetFolderPath, key));
         if (!asset.existsSync()) {
+          logger.warning('Failed to provide asset $key');
           return null;
         }
       }
 
       final encoded = Uint8List.fromList(asset.readAsBytesSync());
+      logger.fine('Providing asset $key');
       return SynchronousFuture<ByteData>(encoded.buffer.asByteData());
     },
   );

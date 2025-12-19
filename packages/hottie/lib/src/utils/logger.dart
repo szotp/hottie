@@ -3,10 +3,9 @@ import 'dart:io';
 
 import 'package:stack_trace/stack_trace.dart';
 
-const hottieReloadSpell = '[HOTTIE:RELOAD]';
-const hottieFromScriptEnvironmentKey = 'HOTTIE_FROM_SCRIPT';
-
-const _ansiReplaceLine = '\r\x1b[K';
+const ansiReplaceLine = '\r\x1b[K';
+const progressPlaceholder = '{PROGRESS}';
+const isHottieWatch = bool.fromEnvironment('HOTTIE_WATCH');
 
 final printer = ConsoleOutput();
 final Logger logger = printer;
@@ -16,7 +15,7 @@ abstract class Logger {
 
   void fine(Object message) => log(LogLevel.verbose, message);
   void info(Object message) => log(LogLevel.info, message);
-  void warning(Object message) => log(LogLevel.info, message);
+  void warning(Object message) => log(LogLevel.warning, message);
   void severe(Object message, StackTrace stackTrace) => log(LogLevel.error, message, stackTrace);
 }
 
@@ -36,7 +35,14 @@ class LogLevel {
 }
 
 class ConsoleOutput extends Logger {
+  ConsoleOutput() {
+    if (isHottieWatch) {
+      appendLocation = false;
+    }
+  }
   int minimumImportance = 1;
+  bool appendLocation = true;
+
   static const _padding = '                 ';
 
   String _timePen(String input) => input;
@@ -55,12 +61,14 @@ class ConsoleOutput extends Logger {
     final sss = timestamp.millisecond.toString().padLeft(3, '0');
     final timeString = _timePen('$hh:$mm:$ss:$sss');
 
-    final trace = Trace.from(stackTrace ?? StackTrace.current);
-    final location = trace.frames.where((x) => !x.location.contains('logger.dart') && !x.location.contains('matcher')).firstOrNull?.location;
-
     final lines = message.toString().split('\n');
+    lines[0] = '$timeString ${level.prefix} ${level.format(lines.first)}';
 
-    lines[0] = '$timeString ${level.prefix} ${level.format(lines.first)} ${_locationPen('at $location ')}';
+    if (appendLocation) {
+      final trace = Trace.from(stackTrace ?? StackTrace.current);
+      final location = trace.frames.where((x) => !x.location.contains('logger.dart') && !x.location.contains('matcher')).firstOrNull?.location;
+      lines[0] = '${lines[0]} ${_locationPen('at $location ')}';
+    }
 
     for (var i = 1; i < lines.length; i++) {
       lines[i] = '$_padding ${level.format(lines[i])}';
@@ -77,7 +85,7 @@ class ConsoleOutput extends Logger {
 
   void updateLine(String line) {
     if (updatingLinesPossible) {
-      stdout.write('$_ansiReplaceLine$line');
+      stdout.writeln('$progressPlaceholder$line');
     } else {
       stdout.writeln(line);
     }
@@ -85,7 +93,7 @@ class ConsoleOutput extends Logger {
 
   void write(List<String> lines) {
     if (_progress != null && updatingLinesPossible) {
-      stdout.write(_ansiReplaceLine);
+      stdout.writeln(progressPlaceholder);
     }
     lines.forEach(stdout.writeln);
   }
