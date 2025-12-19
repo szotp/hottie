@@ -14,14 +14,18 @@ import 'utils/logger.dart';
 const Spawn<RunTestsRequest, List<FailedTest>> spawnRunTests = Spawn(_runTests);
 
 class RunTestsRequest {
-  RunTestsRequest(this.tests, {this.logging = true});
+  /// Files that should be tested
+  List<TestFile> tests = [];
+  int _shards = 1;
 
-  factory RunTestsRequest.changed(List<TestFile> allTests, IsolateArguments arguments) {
-    return RunTestsRequest(allTests.where(arguments.changedTests.contains).toList());
+  int get shards => _shards;
+
+  set shards(int value) {
+    assert(value >= 1 && value <= 8, 'Value must be between 1 and 8');
+    _shards = value;
   }
 
-  final List<TestFile> tests;
-  final bool logging;
+  bool logging = true;
 }
 
 Future<List<FailedTest>> _runTests(Future<RunTestsRequest> testsFuture) async {

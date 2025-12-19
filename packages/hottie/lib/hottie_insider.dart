@@ -15,9 +15,9 @@ import 'src/utils/logger.dart';
 export 'src/run_tests.dart' show RunTestsRequest;
 
 typedef TestFiles = Iterable<TestFile>;
-typedef TestConfigurationFunc = RunTestsRequest Function(IsolateArguments);
+typedef TestConfigurationFunc = void Function(HottieContext, RunTestsRequest);
 
-Future<void> hottie(TestConfigurationFunc func) async {
+Future<void> hottie(TestConfigurationFunc func, List<TestFile> allTests) async {
   if (await spawnRunTests.runIfIsolate()) {
     return;
   }
@@ -32,7 +32,8 @@ Future<void> hottie(TestConfigurationFunc func) async {
   final scriptChange = ScriptChangeChecker(vm, Service.getIsolateId(Isolate.current)!);
   var failed = <FailedTest>[];
 
-  final request = func(IsolateArguments([], Files.empty, isInitialRun: true));
+  final request = RunTestsRequest();
+  func(HottieContext([], [], allTests, isInitialRun: true), request);
   if (request.tests.isNotEmpty) {
     failed = await spawnRunTests.compute(Future.value(request));
   }
@@ -41,8 +42,10 @@ Future<void> hottie(TestConfigurationFunc func) async {
   await scriptChange.observe().forEach((changedTestsFuture) async {
     final future = changedTestsFuture.then((changedFiles) {
       logger.fine('Spawning for: ${changedFiles.describe()}');
-      final arguments = IsolateArguments(failed, changedFiles);
-      return func(arguments);
+      final request = RunTestsRequest();
+      final arguments = HottieContext(failed, allTests.where(changedFiles.contains).toList(), allTests);
+      func(arguments, request);
+      return request;
     });
 
     logger.fine('Spawning...');
@@ -70,12 +73,20 @@ class HottieBinding extends AutomatedTestWidgetsFlutterBinding {
   static final instance = HottieBinding();
 }
 
-class IsolateArguments {
-  IsolateArguments(this.failed, this.changedTests, {this.isInitialRun = false});
+class HottieContext {
+  HottieContext(this.failed, this.changedTests, this.allTests, {this.isInitialRun = false});
 
+  /// Is running for the first time (not caused by hot reload)
   final bool isInitialRun;
+
+  /// Tests which failed in previous run
   final List<FailedTest> failed;
-  final Files changedTests;
+
+  /// Tests that changed since in most recent hot reload, determined by vm_service loaded scripts scan
+  final List<TestFile> changedTests;
+
+  /// All known test files
+  final List<TestFile> allTests;
 }
 
 extension FilesExtension on Files {
